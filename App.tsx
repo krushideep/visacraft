@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Header from './components/Header';
 import ChecklistResult from './components/ChecklistResult';
-import { generateVisaChecklist } from './services/geminiService';
+import { generateVisaChecklist } from './services/aiService';
 import { COUNTRIES } from './constants';
 import { VisaChecklist, VisaType } from './types';
 
@@ -34,9 +34,10 @@ const App: React.FC = () => {
     try {
       const result = await generateVisaChecklist(fromCountry, toCountry, visaType);
       setChecklist(result);
-    } catch (err: any) {
-      console.error(err);
-      setError("Unable to generate checklist. Please try again later.");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      setError(errorMessage);
+      console.error("Visa checklist error:", err);
     } finally {
       setLoading(false);
     }
