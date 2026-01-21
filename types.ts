@@ -12,12 +12,18 @@ export interface VisaChecklist {
   additionalTips: string[];
   officialLinks: { title: string; url: string }[];
   applicationForms: { title: string; url: string }[];
+  checklistItems: ChecklistItem[];
+}
+
+export interface ChecklistItem {
+  title: string;
+  requirements: string[];
 }
 
 export enum VisaType {
   TOURIST = 'Tourist',
   BUSINESS = 'Business',
-  STUDENT = 'Student',
+  STUDENT = 'Study',
   WORK = 'Work',
   TRANSIT = 'Transit',
   RESIDENCY = 'Permanent Residency'

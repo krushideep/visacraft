@@ -194,7 +194,7 @@ The response MUST follow this exact JSON structure and include a detailed 'check
   "officialLinks": [
     {"title": "Official Consulate/Embassy Site", "url": "URL"},
     {"title": "Ministry of Foreign Affairs Policy", "url": "URL"},
-    {"title": "Visa Application Portal", "url": "URL"}
+    {"title": "Schengen/Regional Border Policy (if applicable)", "url": "URL"}
   ],
   "checklistItems": [
     {
@@ -243,6 +243,7 @@ export const generateVisaChecklist = async (
   const cacheKey = `${CACHE_PREFIX}${codeFrom}_${codeTo}_${visaType.replace(/\s+/g, '_')}`;
 
   // 1. Schengen fast-path (no API call needed)
+  const isSchengenFrom = EU_SCHENGEN.includes(codeFrom);
   const isSchengenTo = EU_SCHENGEN.includes(codeTo);
   if (isSchengenTo &&
     (visaType === VisaType.TOURIST || visaType === VisaType.BUSINESS)) {
