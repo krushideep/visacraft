@@ -1,5 +1,26 @@
 
 import React, { useState } from 'react';
+import {
+  Box,
+  Container,
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  Card,
+  CardContent,
+  Stack,
+  Typography,
+  Alert,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Grid,
+  Divider,
+} from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import SendIcon from '@mui/icons-material/Send';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Header from './components/Header';
 import ChecklistResult from './components/ChecklistResult';
 import { generateVisaChecklist } from './services/aiService';
@@ -48,127 +69,243 @@ const App: React.FC = () => {
     setError(null);
   };
 
+  const theme = useTheme();
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 w-full">
-        {!checklist ? (
-          <div className="max-w-3xl mx-auto animate-fade-in">
-            <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl border border-slate-50">
-              <div className="mb-10 text-center">
-                <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">Plan Your Journey</h2>
-                <p className="text-slate-500 font-medium italic">Instant AI-generated visa requirements for any destination.</p>
-              </div>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          py: { xs: 4, md: 8 },
+          backgroundColor: theme.palette.background.default,
+        }}
+      >
+        <Container maxWidth="md">
+          {!checklist ? (
+            <Box
+              sx={{
+                animation: 'fadeIn 0.4s cubic-bezier(0.2, 0, 0, 1) forwards',
+                '@keyframes fadeIn': {
+                  from: { opacity: 0, transform: 'translateY(10px)' },
+                  to: { opacity: 1, transform: 'translateY(0)' },
+                },
+              }}
+            >
+              <Card
+                sx={{
+                  borderRadius: 3,
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                }}
+              >
+                <CardContent sx={{ p: { xs: 3, md: 5 } }}>
+                  <Box sx={{ mb: 4, textAlign: 'center' }}>
+                    <Typography
+                      variant="h2"
+                      sx={{
+                        mb: 1,
+                        fontSize: { xs: '1.75rem', md: '2.5rem' },
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      Visa Requirements, Simplified
+                    </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        fontStyle: 'italic',
+                        fontSize: '1.05rem',
+                      }}
+                    >
+                      Get a clear, up-to-date checklist for your visa — based on your passport, destination, and travel purpose.
+                    </Typography>
+                  </Box>
 
-              <form onSubmit={handleSubmit} className="space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  {/* From */}
-                  <div className="space-y-4">
-                    <label className="text-xs font-black uppercase tracking-widest text-[#005fb0] flex items-center gap-2">
-                      <i className="fa-solid fa-earth-americas"></i>
-                      Your Citizenship
-                    </label>
-                    <div className="relative group">
-                      <select
-                        value={fromCountry}
-                        onChange={(e) => setFromCountry(e.target.value)}
-                        className="w-full h-16 pl-6 pr-12 rounded-2xl border-2 border-slate-50 bg-slate-50 focus:bg-white focus:border-[#005fb0] transition-all appearance-none outline-none font-semibold text-slate-800 text-lg shadow-sm"
+                  <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
+                    <Stack spacing={3}>
+                      {/* Country Selection Row */}
+                      <Grid container spacing={3}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <FormControl fullWidth>
+                            <InputLabel id="from-country-label">Passport Issuing Country</InputLabel>
+                            <Select
+                              labelId="from-country-label"
+                              id="from-country"
+                              value={fromCountry}
+                              onChange={(e) => setFromCountry(e.target.value)}
+                              label="  Passport Issuing Country  "
+                              sx={{
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8f9fa',
+                                  '&:hover': {
+                                    backgroundColor: theme.palette.background.paper,
+                                  },
+                                },
+                              }}
+                            >
+                              <MenuItem value="">
+                                <em>Select country...</em>
+                              </MenuItem>
+                              {COUNTRIES.map((c) => (
+                                <MenuItem key={`from-${c.code}`} value={c.name}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 6 }}>
+                          <FormControl fullWidth>
+                            <InputLabel id="to-country-label">Where are you travelling to?</InputLabel>
+                            <Select
+                              labelId="to-country-label"
+                              id="to-country"
+                              value={toCountry}
+                              onChange={(e) => setToCountry(e.target.value)}
+                              label="Where are you travelling to?"
+                              sx={{
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                  backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8f9fa',
+                                  '&:hover': {
+                                    backgroundColor: theme.palette.background.paper,
+                                  },
+                                },
+                              }}
+                            >
+                              <MenuItem value="">
+                                <em>Select country...</em>
+                              </MenuItem>
+                              {COUNTRIES.map((c) => (
+                                <MenuItem key={`to-${c.code}`} value={c.name}>
+                                  {c.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      </Grid>
+
+                      {/* Visa Type Selection */}
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'block',
+                            mb: 1.5,
+                            color: theme.palette.text.secondary,
+                            fontWeight: 700,
+                          }}
+                        >
+                          Purpose of Travel
+                        </Typography>
+                        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                          {Object.values(VisaType).map((type) => (
+                            <Button
+                              key={type}
+                              variant={visaType === type ? 'contained' : 'outlined'}
+                              onClick={() => setVisaType(type)}
+                              size="small"
+                              sx={{
+                                borderRadius: 2,
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                px: 2,
+                                py: 1,
+                              }}
+                            >
+                              {type}
+                            </Button>
+                          ))}
+                        </Stack>
+                      </Box>
+
+                      {/* Error Message */}
+                      {error && (
+                        <Alert
+                          severity="error"
+                          sx={{
+                            borderRadius: 2,
+                            animation: 'fadeIn 0.3s ease-in',
+                            '@keyframes fadeIn': {
+                              from: { opacity: 0 },
+                              to: { opacity: 1 },
+                            },
+                          }}
+                        >
+                          {error}
+                        </Alert>
+                      )}
+
+                      {/* Submit Button */}
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        size="large"
+                        disabled={loading}
+                        sx={{
+                          py: 1.75,
+                          fontSize: '1rem',
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          backgroundColor: theme.palette.text.primary,
+                          '&:hover': {
+                            backgroundColor: theme.palette.text.primary,
+                            opacity: 0.9,
+                          },
+                          '&:disabled': {
+                            opacity: 0.6,
+                          },
+                        }}
                       >
-                        <option value="">Select country...</option>
-                        {COUNTRIES.map(c => (
-                          <option key={`from-${c.code}`} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                      <i className="fa-solid fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-[#005fb0]"></i>
-                    </div>
-                  </div>
+                        {loading ? 'Generating Visa Checklist...' : 'Generate Visa Checklist'}
+                      </Button>
+                    </Stack>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
+          ) : (
+            <ChecklistResult checklist={checklist} onReset={handleReset} />
+          )}
+        </Container>
+      </Box>
 
-                  {/* To */}
-                  <div className="space-y-4">
-                    <label className="text-xs font-black uppercase tracking-widest text-rose-600 flex items-center gap-2">
-                      <i className="fa-solid fa-location-dot"></i>
-                      Target Destination
-                    </label>
-                    <div className="relative group">
-                      <select
-                        value={toCountry}
-                        onChange={(e) => setToCountry(e.target.value)}
-                        className="w-full h-16 pl-6 pr-12 rounded-2xl border-2 border-slate-50 bg-slate-50 focus:bg-white focus:border-rose-500 transition-all appearance-none outline-none font-semibold text-slate-800 text-lg shadow-sm"
-                      >
-                        <option value="">Select country...</option>
-                        {COUNTRIES.map(c => (
-                          <option key={`to-${c.code}`} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                      <i className="fa-solid fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-rose-500"></i>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Visa Type */}
-                <div className="space-y-5">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <i className="fa-solid fa-briefcase"></i>
-                    Purpose of Travel
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                    {Object.values(VisaType).map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setVisaType(type)}
-                        className={`py-4 px-2 rounded-2xl border-2 text-[10px] uppercase tracking-tighter font-black transition-all ${visaType === type
-                          ? 'bg-[#005fb0] border-[#005fb0] text-white shadow-lg shadow-blue-100'
-                          : 'bg-white border-slate-50 text-slate-500 hover:border-slate-200'
-                          }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="bg-rose-50 border border-rose-100 text-rose-700 px-6 py-4 rounded-2xl text-sm font-bold flex items-center gap-3 animate-fade-in">
-                    <i className="fa-solid fa-circle-exclamation text-rose-500 text-lg"></i>
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-20 rounded-3xl font-black text-xl shadow-2xl transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-4 bg-slate-900 text-white hover:bg-black"
-                >
-                  {loading ? (
-                    <>
-                      <i className="fa-solid fa-circle-notch fa-spin"></i>
-                      Building Roadmap...
-                    </>
-                  ) : (
-                    <>
-                      <span>Secure Checklist</span>
-                      <i className="fa-solid fa-arrow-right-long text-blue-400"></i>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          <ChecklistResult checklist={checklist} onReset={handleReset} />
-        )}
-      </main>
-
-      <footer className="bg-white border-t border-slate-100 py-10 mt-auto no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-slate-400 text-sm font-medium">
+      <Box
+        component="footer"
+        sx={{
+          borderTop: `1px solid ${theme.palette.divider}`,
+          py: 3,
+          backgroundColor: theme.palette.background.paper,
+          mt: 'auto',
+          '&.no-print': {
+            '@media print': {
+              display: 'none',
+            },
+          },
+        }}
+        className="no-print"
+      >
+        <Container maxWidth="lg">
+          <Typography
+            variant="body2"
+            sx={{
+              textAlign: 'center',
+              color: theme.palette.text.secondary,
+            }}
+          >
             &copy; {new Date().getFullYear()} VisaCraft. Helping the world move, one stamp at a time.
-          </p>
-        </div>
-      </footer>
-    </div>
+          </Typography>
+        </Container>
+      </Box>
+    </Box>
   );
 };
 

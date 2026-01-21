@@ -30,61 +30,97 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
 
       // 3. GENERATE FORMATTED TEMPLATE
       const template = `
-        <div style="font-family: 'Helvetica', sans-serif; color: #334155; max-width: 800px; margin: 0 auto;">
-          <header style="background: #2563eb; color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: 800;">VISA APPLICATION CHECKLIST</h1>
-            <p style="margin: 5px 0 0; font-size: 16px; opacity: 0.9;">${data.countryFrom} → ${data.countryTo} | ${data.visaType}</p>
-          </header>
+        <div style="font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; color: #1e293b; max-width: 850px; margin: 0 auto; background: white;">
+          <!-- Formal Header -->
+          <div style="background: #f8fafc; padding: 30px 35px 20px; border-bottom: 3px solid #005fb0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+              <div>
+                <h1 style="margin: 0; font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -1px; text-transform: uppercase;">Visa Roadmap</h1>
+                <p style="margin: 4px 0 0; font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 11px; font-weight: 700; color: #005fb0; text-transform: uppercase; letter-spacing: 1.5px;">Global Compliance Blueprint</p>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 8px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Generated on</div>
+                <div style="font-size: 11px; font-weight: 700; color: #1e293b;">${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+              </div>
+            </div>
 
-          <section style="display: flex; gap: 15px; margin-bottom: 30px;">
-            <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <small style="font-weight: 800; font-size: 10px; color: #64748b;">CATEGORY</small>
-              <div style="font-weight: 700; margin-top: 4px;">${data.visaCategory}</div>
+            <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div>
+                <div style="font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Passport Issuing Country</div>
+                <div style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 13px; font-weight: 700; color: #0f172a;">${data.countryFrom}</div>
+              </div>
+              <div>
+                <div style="font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Target Destination</div>
+                <div style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 13px; font-weight: 700; color: #0f172a;">${data.countryTo}</div>
+              </div>
             </div>
-            <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <small style="font-weight: 800; font-size: 10px; color: #64748b;">FEE</small>
-              <div style="font-weight: 700; margin-top: 4px;">${data.expectedFee}</div>
-            </div>
-            <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <small style="font-weight: 800; font-size: 10px; color: #64748b;">DURATION</small>
-              <div style="font-weight: 700; margin-top: 4px;">${data.estimatedProcessingTime}</div>
-            </div>
-          </section>
-
-          <div style="margin-bottom: 30px;">
-            <h2 style="font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Documentation Requirements</h2>
-            <ul style="list-style: none; padding: 0;">
-              ${[...data.generalRequirements, ...data.specificRequirements].map(r => `
-                <li style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: flex-start;">
-                  <span style="display: inline-block; width: 18px; height: 18px; border: 2px solid #cbd5e1; margin-right: 12px; border-radius: 4px;"></span>
-                  <span>${r}</span>
-                </li>
-              `).join('')}
-            </ul>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+              <tr>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px 0 0 6px;">
+                  <div style="font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Processing Window</div>
+                  <div style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 12px; font-weight: 700; color: #1e293b;">${data.estimatedProcessingTime}</div>
+                </td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">
+                  <div style="font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Official Fees</div>
+                  <div style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 12px; font-weight: 700; color: #1e293b;">${data.expectedFee.split('(')[0].trim()}</div>
+                </td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0; border-radius: 0 6px 6px 0;">
+                  <div style="font-size: 8px; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Visa Classification</div>
+                  <div style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 12px; font-weight: 700; color: #1e293b;">${data.visaCategory}</div>
+                </td>
+              </tr>
+            </table>
           </div>
 
-          <div style="margin-bottom: 30px;">
-            <h2 style="font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Financial Proof</h2>
-            <ul style="list-style: none; padding: 0;">
-              ${data.financialRequirements.map(r => `
-                <li style="padding: 10px 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: flex-start;">
-                  <span style="display: inline-block; width: 18px; height: 18px; border: 2px solid #cbd5e1; margin-right: 12px; border-radius: 4px;"></span>
-                  <span>${r}</span>
-                </li>
-              `).join('')}
-            </ul>
+          <!-- Main Content -->
+          <div style="padding: 25px 35px;">
+            ${(data.checklistItems || []).map((item, idx) => `
+              <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                  <div style="width: 16px; height: 16px; border: 2px solid #005fb0; border-radius: 4px; margin-right: 12px; flex-shrink: 0;"></div>
+                  <h3 style="margin: 0; font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 15px; font-weight: 700; color: #0f172a; letter-spacing: -0.3px;">
+                    ${item.title.replace(/^\d+\.\s*/, '')}
+                  </h3>
+                </div>
+                
+                <div style="margin-left: 28px; border-left: 2px solid #f1f5f9; padding-left: 18px;">
+                  ${item.requirements.map(req => `
+                    <div style="margin-bottom: 6px; display: flex; align-items: flex-start;">
+                      <div style="width: 4px; height: 4px; background: #005fb0; border-radius: 50%; margin-top: 6px; margin-right: 10px; flex-shrink: 0;"></div>
+                      <span style="font-size: 11px; font-weight: 450; color: #334155; line-height: 1.5; letter-spacing: 0.1px;">${req}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
           </div>
 
-          <footer style="background: #fdf2f8; border: 1px solid #fce7f3; color: #9d174d; padding: 20px; border-radius: 8px;">
-            <h4 style="margin: 0 0 8px 0;">Essential Travel Tips</h4>
-            <ul style="margin: 0; padding-left: 20px; line-height: 1.5;">
-              ${data.additionalTips.map(t => `<li style="margin-bottom: 4px;">${t}</li>`).join('')}
-            </ul>
+          <!-- Professional Footer -->
+          <footer style="margin-top: 15px; padding: 20px 35px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+            ${(data.officialLinks?.length > 0 || data.applicationForms?.length > 0) ? `
+              <div style="margin-bottom: 15px;">
+                <h4 style="font-family: 'Helvetica Neue', 'Helvetica', sans-serif; font-size: 11px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Official Resources</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  ${[...(data.officialLinks || []), ...(data.applicationForms || [])].map(resource => `
+                    <div style="padding: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
+                      <div style="font-size: 10px; font-weight: 700; color: #1e293b;">${resource.title}</div>
+                      <div style="font-size: 8px; color: #005fb0; text-decoration: none; margin-top: 2px; word-break: break-all;">${resource.url}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+              <div>
+                <p style="font-size: 9px; font-weight: 500; color: #64748b; margin: 0 0 6px; max-width: 450px; line-height: 1.5;">
+                  <strong>Disclaimer:</strong> This blueprint is for planning purposes only. Visa regulations are subject to frequent policy shifts. Always confirm documentation with official diplomatic channels.
+                </p>
+                <div style="font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Document ID: VC-${Math.random().toString(36).substr(2, 9).toUpperCase()}</div>
+              </div>
+            </div>
           </footer>
-
-          <div style="margin-top: 40px; text-align: center; color: #94a3b8; font-size: 11px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-            Official requirements are subject to change. Generated by VisaCraft AI.
-          </div>
         </div>
       `;
 
@@ -109,6 +145,7 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
       setIsExporting(false);
     }
   };
+
 
   const toggleItem = (key: string) => {
     setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
@@ -170,7 +207,7 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
           className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium"
         >
           <i className="fa-solid fa-arrow-left"></i>
-          Back to Generator
+          Back to Navigator
         </button>
         <div className="flex flex-wrap gap-3">
           <button
@@ -200,133 +237,113 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
         ref={checklistRef}
         className="checklist-container bg-white border border-slate-100 shadow-2xl rounded-[2rem] mb-12 overflow-hidden animate-fade-in"
       >
-        {/* Document Header (Hidden in app, shown in PDF) */}
-        <div className="hidden print-only p-8 text-center border-b border-slate-100 bg-slate-50">
-          <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-wider">VisaCraft Travel Document</h1>
-          <p className="text-slate-500 text-sm mt-1">Personalized Application Checklist & Requirements</p>
-        </div>
-
         <div className="bg-gradient-to-br from-[#005fb0] to-[#001b3e] p-10 md:p-14 text-white">
           <div className="flex flex-wrap items-center gap-3 text-xs font-black uppercase tracking-widest opacity-60 mb-4">
             <span>{checklist.countryFrom}</span>
             <i className="fa-solid fa-arrow-right-long text-[10px]"></i>
             <span>{checklist.countryTo}</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight leading-tight">
-            {checklist.visaType} <span className="opacity-50">Checklist</span>
+          <h2 className="text-4xl md:text-5xl font-black mb-10 tracking-tight leading-tight">
+            {checklist.visaType} <span className="opacity-50">Visa Blueprint</span>
           </h2>
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="bg-white/10 backdrop-blur-xl px-5 py-2.5 rounded-2xl flex items-center gap-2 border border-white/10 shadow-lg">
-              <i className="fa-solid fa-shield-halved text-blue-300"></i>
-              <span className="text-sm font-bold">Verified AI Requirements</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="p-8 md:p-12 border-b border-slate-50 bg-slate-50/30">
-          {/* Summary Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <SummaryCard
-              label="Processing"
-              value={checklist.estimatedProcessingTime}
-              colorClass="bg-white"
-              borderClass="border-slate-100"
-              textClass="text-[#005fb0]"
-            />
-            <SummaryCard
-              label="Consular Fee"
-              value={checklist.expectedFee}
-              colorClass="bg-white"
-              borderClass="border-slate-100"
-              textClass="text-emerald-600"
-            />
-            <SummaryCard
-              label="Legal Category"
-              value={checklist.visaCategory}
-              colorClass="bg-white"
-              borderClass="border-slate-100"
-              textClass="text-indigo-600"
-            />
+          {/* Action Cards / Summary Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-lg">
+              <div className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Processing Window</div>
+              <div className="text-xl font-black">{checklist.estimatedProcessingTime}</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-lg">
+              <div className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Official Fees</div>
+              <div className="text-xl font-black">{checklist.expectedFee.split('(')[0].trim()}</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-lg">
+              <div className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Visa Classification</div>
+              <div className="text-xl font-black">{checklist.visaCategory}</div>
+            </div>
           </div>
         </div>
 
         <div className="p-10 md:p-14">
-          {checklist.applicationForms && checklist.applicationForms.length > 0 && (
-            <div className="mb-10 p-8 bg-slate-50 border border-slate-100 rounded-[2rem] animate-fade-in shadow-sm">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center text-white shadow-lg">
-                  <i className="fa-solid fa-file-pdf text-xl"></i>
-                </div>
-                <h3 className="text-xl font-black text-rose-900 tracking-tight">Standard Application Forms</h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {checklist.applicationForms.map((form, idx) => (
-                  <a
-                    key={idx}
-                    href={form.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-5 bg-white border border-rose-100 rounded-2xl hover:border-rose-400 transition-all group shadow-sm hover:shadow-md"
+          <div className="grid grid-cols-1 gap-12">
+            {checklist.checklistItems?.map((item, sectionIdx) => {
+              const sectionKey = `section-${sectionIdx}`;
+              const isSectionChecked = checkedItems[sectionKey];
+
+              return (
+                <div key={sectionIdx} className="animate-fade-in">
+                  <div
+                    onClick={() => toggleItem(sectionKey)}
+                    className="flex items-center gap-4 mb-6 cursor-pointer group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 group-hover:bg-rose-500 group-hover:text-white transition-all">
-                        <i className="fa-solid fa-cloud-arrow-down"></i>
-                      </div>
-                      <span className="font-bold text-rose-900">{form.title}</span>
+                    <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all ${isSectionChecked
+                      ? 'bg-[#005fb0] border-[#005fb0] text-white'
+                      : 'border-slate-200 text-transparent group-hover:border-[#005fb0]'}`}
+                    >
+                      <i className="fa-solid fa-check text-sm"></i>
                     </div>
-                    <i className="fa-solid fa-chevron-right text-rose-200 group-hover:text-rose-500 transition-colors"></i>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-          <Section
-            title="General Documentation"
-            items={checklist.generalRequirements}
-            icon="fa-file-lines"
-            colorClass="bg-[#005fb0]"
-          />
+                    <h3 className={`text-2xl font-black tracking-tight transition-all ${isSectionChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-900'}`}>
+                      {item.title.replace(/^\d+\.\s*/, '')}
+                    </h3>
+                  </div>
+                  <div className="ml-14 space-y-3">
+                    {item.requirements.map((req, reqIdx) => {
+                      const itemKey = `section-${sectionIdx}-req-${reqIdx}`;
+                      const isChecked = checkedItems[itemKey];
+                      return (
+                        <div
+                          key={itemKey}
+                          onClick={() => toggleItem(itemKey)}
+                          className={`flex items-start gap-3 py-1 cursor-pointer group transition-all`}
+                        >
+                          <div className="mt-1 text-[#005fb0] opacity-40 group-hover:opacity-100 transition-opacity">
+                            •
+                          </div>
+                          <p className={`text-lg font-medium leading-relaxed ${isChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-700'}`}>
+                            {req}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-          <Section
-            title="Specific Visa Requirements"
-            items={checklist.specificRequirements}
-            icon="fa-suitcase"
-            colorClass="bg-indigo-600"
-          />
-
-          <Section
-            title="Financial Evidence"
-            items={checklist.financialRequirements}
-            icon="fa-wallet"
-            colorClass="bg-amber-600"
-          />
-
-          <Section
-            title="Expert Travel Advice"
-            items={checklist.additionalTips}
-            icon="fa-lightbulb"
-            colorClass="bg-emerald-600"
-          />
-
-          {checklist.officialLinks && checklist.officialLinks.length > 0 && (
-            <div className="mt-16 pt-12 border-t border-slate-100 no-print animate-fade-in">
-              <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Official Goverment Portals</h3>
+          {(checklist.officialLinks?.length > 0 || checklist.applicationForms?.length > 0) && (
+            <div className="mt-16 pt-12 border-t border-slate-100 no-print">
+              <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Official Resources</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {checklist.officialLinks.map((link, idx) => (
+                {checklist.officialLinks?.map((link, idx) => (
                   <a
-                    key={idx}
+                    key={`link-${idx}`}
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-6 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-white hover:border-[#005fb0] transition-all group shadow-sm hover:shadow-lg"
+                    className="flex flex-col p-6 bg-slate-50 rounded-2xl hover:bg-white hover:border-[#005fb0] border border-transparent transition-all group shadow-sm hover:shadow-md"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-[#005fb0] shadow-sm group-hover:bg-[#005fb0] group-hover:text-white transition-all">
-                        <i className="fa-solid fa-building-columns"></i>
-                      </div>
-                      <span className="font-black text-slate-800 tracking-tight">{link.title}</span>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-slate-900 group-hover:text-[#005fb0] transition-colors">{link.title}</span>
+                      <i className="fa-solid fa-arrow-up-right-from-square text-slate-300 group-hover:text-[#005fb0] text-sm"></i>
                     </div>
-                    <i className="fa-solid fa-arrow-up-right-from-square text-slate-300 group-hover:text-[#005fb0] transition-colors text-sm"></i>
+                    <span className="text-xs text-slate-400 truncate font-mono uppercase tracking-wider">Official Portal</span>
+                  </a>
+                ))}
+
+                {checklist.applicationForms?.map((form, idx) => (
+                  <a
+                    key={`form-${idx}`}
+                    href={form.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col p-6 bg-blue-50/30 rounded-2xl hover:bg-white hover:border-[#005fb0] border border-transparent transition-all group shadow-sm hover:shadow-md"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-slate-900 group-hover:text-[#005fb0] transition-colors">{form.title}</span>
+                      <i className="fa-solid fa-file-pdf text-blue-400 group-hover:text-[#005fb0] text-sm"></i>
+                    </div>
+                    <span className="text-xs text-blue-400 truncate font-mono uppercase tracking-wider">Application Form</span>
                   </a>
                 ))}
               </div>
@@ -334,14 +351,15 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
           )}
         </div>
 
-        <div className="bg-slate-50 border-t border-slate-100 p-6 text-center">
-          <p className="text-slate-400 text-xs italic">
-            Disclaimer: Requirements can change frequently. Always verify with the official consulate or embassy before your application. Generated by VisaCraft AI.
+        <div className="bg-slate-50 border-t border-slate-100 p-8 text-center">
+          <p className="text-slate-400 text-sm italic mb-2">
+            Official requirements are subject to change. Always verify with the consulate.
           </p>
         </div>
       </div>
     </div>
   );
 };
+
 
 export default ChecklistResult;
