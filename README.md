@@ -70,7 +70,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for GitHub Pages setup with GitHub Actions.
 - **Frontend:** React 19 + TypeScript + Vite
 - **Styling:** Tailwind CSS
 - **AI:** GitHub Models API (GPT-4o)
-- **Deployment:** GitHub Pages + GitHub Actions
+- **Deployment:** GitHub Pages + GitHub Actions 
 - **Caching:** localStorage (7 days)
 
 ## Documentation
