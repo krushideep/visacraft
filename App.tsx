@@ -1,28 +1,9 @@
-
 import React, { useState } from 'react';
-import {
-  Box,
-  Container,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-  Card,
-  CardContent,
-  Stack,
-  Typography,
-  Alert,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  Grid,
-  Divider,
-} from '@mui/material';
+import { Box, Container, TextField, Select, MenuItem, Button, Card, CardContent, Stack, Typography, Alert, FormControl, InputLabel, Grid, Chip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import SendIcon from '@mui/icons-material/Send';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Header from './components/Header';
 import ChecklistResult from './components/ChecklistResult';
+import VisaAssistant from './components/VisaAssistant';
 import { generateVisaChecklist } from './services/aiService';
 import { COUNTRIES } from './constants';
 import { VisaChecklist, VisaType } from './types';
@@ -31,280 +12,58 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<VisaChecklist | null>(null);
-
-  // Form State
-  const [fromCountry, setFromCountry] = useState('');
+  const [fromCountry, setFromCountry] = useState('India');
   const [toCountry, setToCountry] = useState('');
   const [visaType, setVisaType] = useState<VisaType>(VisaType.TOURIST);
+  const theme = useTheme();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fromCountry || !toCountry) {
-      setError("Please select both origin and destination countries.");
-      return;
-    }
-
-    if (fromCountry === toCountry) {
-      setError("Origin and destination cannot be the same.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await generateVisaChecklist(fromCountry, toCountry, visaType);
-      setChecklist(result);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
-      setError(errorMessage);
-      console.error("Visa checklist error:", err);
-    } finally {
-      setLoading(false);
-    }
+    if (!fromCountry || !toCountry) return setError('Please select both passport country and destination.');
+    if (fromCountry === toCountry) return setError('Passport country and destination cannot be the same.');
+    setLoading(true); setError(null);
+    try { setChecklist(await generateVisaChecklist(fromCountry, toCountry, visaType)); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not generate visa checklist.'); }
+    finally { setLoading(false); }
   };
 
-  const handleReset = () => {
-    setChecklist(null);
-    setError(null);
-  };
-
-  const theme = useTheme();
+  const reset = () => { setChecklist(null); setError(null); };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(180deg,#f7f8f5 0%,#fff 70%)' }}>
       <Header />
-
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          py: { xs: 4, md: 8 },
-          backgroundColor: theme.palette.background.default,
-        }}
-      >
-        <Container maxWidth="md">
-          {!checklist ? (
-            <Box
-              sx={{
-                animation: 'fadeIn 0.4s cubic-bezier(0.2, 0, 0, 1) forwards',
-                '@keyframes fadeIn': {
-                  from: { opacity: 0, transform: 'translateY(10px)' },
-                  to: { opacity: 1, transform: 'translateY(0)' },
-                },
-              }}
-            >
-              <Card
-                sx={{
-                  borderRadius: 3,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                }}
-              >
-                <CardContent sx={{ p: { xs: 3, md: 5 } }}>
-                  <Box sx={{ mb: 4, textAlign: 'center' }}>
-                    <Typography
-                      variant="h2"
-                      sx={{
-                        mb: 1,
-                        fontSize: { xs: '1.75rem', md: '2.5rem' },
-                        color: theme.palette.text.primary,
-                      }}
-                    >
-                      Visa Requirements, Simplified
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: theme.palette.text.secondary,
-                        fontStyle: 'italic',
-                        fontSize: '1.05rem',
-                      }}
-                    >
-                      Get a clear, up-to-date checklist for your visa — based on your passport, destination, and travel purpose.
-                    </Typography>
-                  </Box>
-
-                  <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
-                    <Stack spacing={3}>
-                      {/* Country Selection Row */}
-                      <Grid container spacing={3}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <FormControl fullWidth>
-                            <InputLabel id="from-country-label">Passport Issuing Country</InputLabel>
-                            <Select
-                              labelId="from-country-label"
-                              id="from-country"
-                              value={fromCountry}
-                              onChange={(e) => setFromCountry(e.target.value)}
-                              label="  Passport Issuing Country  "
-                              sx={{
-                                borderRadius: 2,
-                                '& .MuiOutlinedInput-root': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8f9fa',
-                                  '&:hover': {
-                                    backgroundColor: theme.palette.background.paper,
-                                  },
-                                },
-                              }}
-                            >
-                              <MenuItem value="">
-                                <em>Select country...</em>
-                              </MenuItem>
-                              {COUNTRIES.map((c) => (
-                                <MenuItem key={`from-${c.code}`} value={c.name}>
-                                  {c.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Grid>
-
-                        <Grid size={{ xs: 12, md: 6 }}>
-                          <FormControl fullWidth>
-                            <InputLabel id="to-country-label">Where are you travelling to?</InputLabel>
-                            <Select
-                              labelId="to-country-label"
-                              id="to-country"
-                              value={toCountry}
-                              onChange={(e) => setToCountry(e.target.value)}
-                              label="Where are you travelling to?"
-                              sx={{
-                                borderRadius: 2,
-                                '& .MuiOutlinedInput-root': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#f8f9fa',
-                                  '&:hover': {
-                                    backgroundColor: theme.palette.background.paper,
-                                  },
-                                },
-                              }}
-                            >
-                              <MenuItem value="">
-                                <em>Select country...</em>
-                              </MenuItem>
-                              {COUNTRIES.map((c) => (
-                                <MenuItem key={`to-${c.code}`} value={c.name}>
-                                  {c.name}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                      </Grid>
-
-                      {/* Visa Type Selection */}
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: 'block',
-                            mb: 1.5,
-                            color: theme.palette.text.secondary,
-                            fontWeight: 700,
-                          }}
-                        >
-                          Purpose of Travel
-                        </Typography>
-                        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                          {Object.values(VisaType).map((type) => (
-                            <Button
-                              key={type}
-                              variant={visaType === type ? 'contained' : 'outlined'}
-                              onClick={() => setVisaType(type)}
-                              size="small"
-                              sx={{
-                                borderRadius: 2,
-                                fontWeight: 700,
-                                fontSize: '0.75rem',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.03em',
-                                px: 2,
-                                py: 1,
-                              }}
-                            >
-                              {type}
-                            </Button>
-                          ))}
-                        </Stack>
-                      </Box>
-
-                      {/* Error Message */}
-                      {error && (
-                        <Alert
-                          severity="error"
-                          sx={{
-                            borderRadius: 2,
-                            animation: 'fadeIn 0.3s ease-in',
-                            '@keyframes fadeIn': {
-                              from: { opacity: 0 },
-                              to: { opacity: 1 },
-                            },
-                          }}
-                        >
-                          {error}
-                        </Alert>
-                      )}
-
-                      {/* Submit Button */}
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        size="large"
-                        disabled={loading}
-                        sx={{
-                          py: 1.75,
-                          fontSize: '1rem',
-                          borderRadius: 2,
-                          textTransform: 'none',
-                          backgroundColor: theme.palette.text.primary,
-                          '&:hover': {
-                            backgroundColor: theme.palette.text.primary,
-                            opacity: 0.9,
-                          },
-                          '&:disabled': {
-                            opacity: 0.6,
-                          },
-                        }}
-                      >
-                        {loading ? 'Generating Visa Checklist...' : 'Generate Visa Checklist'}
-                      </Button>
-                    </Stack>
-                  </Box>
-                </CardContent>
-              </Card>
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
+        {!checklist ? (
+          <Stack spacing={4} alignItems="center">
+            <Box sx={{ textAlign: 'center', maxWidth: 760 }}>
+              <Chip label="YOUR TRAVEL READINESS ASSISTANT" color="success" variant="outlined" sx={{ mb: 2, fontWeight: 800, letterSpacing: '.06em' }} />
+              <Typography sx={{ fontSize: { xs: '3rem', md: '5.2rem' }, fontWeight: 850, letterSpacing: '-.06em', lineHeight: .98 }}>Know before<br />you go.</Typography>
+              <Typography color="text.secondary" sx={{ fontSize: { xs: 16, md: 19 }, mt: 2, lineHeight: 1.55 }}>Tell VisaCraft about your trip. Get a clear, personalized visa plan — then verify it against official sources.</Typography>
             </Box>
-          ) : (
-            <ChecklistResult checklist={checklist} onReset={handleReset} />
-          )}
-        </Container>
-      </Box>
-
-      <Box
-        component="footer"
-        sx={{
-          borderTop: `1px solid ${theme.palette.divider}`,
-          py: 3,
-          backgroundColor: theme.palette.background.paper,
-          mt: 'auto',
-          '&.no-print': {
-            '@media print': {
-              display: 'none',
-            },
-          },
-        }}
-        className="no-print"
-      >
-        <Container maxWidth="lg">
-          <Typography
-            variant="body2"
-            sx={{
-              textAlign: 'center',
-              color: theme.palette.text.secondary,
-            }}
-          >
-            &copy; {new Date().getFullYear()} VisaCraft. Helping the world move, one stamp at a time.
-          </Typography>
-        </Container>
-      </Box>
+            <Card sx={{ width: '100%', maxWidth: 860, borderRadius: 4, border: '1px solid', borderColor: 'divider', boxShadow: '0 20px 60px rgba(20,40,30,.08)' }}>
+              <CardContent sx={{ p: { xs: 2.5, md: 4 } }}>
+                <Box component="form" onSubmit={handleSubmit}>
+                  <Stack spacing={2.5}>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, md: 6 }}><FormControl fullWidth><InputLabel>Passport country</InputLabel><Select value={fromCountry} label="Passport country" onChange={e => setFromCountry(e.target.value)}>{COUNTRIES.map(c => <MenuItem key={c.code} value={c.name}>{c.name}</MenuItem>)}</Select></FormControl></Grid>
+                      <Grid size={{ xs: 12, md: 6 }}><FormControl fullWidth><InputLabel>Destination</InputLabel><Select value={toCountry} label="Destination" onChange={e => setToCountry(e.target.value)}><MenuItem value=""><em>Select destination…</em></MenuItem>{COUNTRIES.map(c => <MenuItem key={c.code} value={c.name}>{c.name}</MenuItem>)}</Select></FormControl></Grid>
+                    </Grid>
+                    <Box><Typography variant="caption" fontWeight={800} color="text.secondary">PURPOSE</Typography><Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>{Object.values(VisaType).map(t => <Button key={t} variant={visaType === t ? 'contained' : 'outlined'} onClick={() => setVisaType(t)} sx={{ borderRadius: 2 }}>{t}</Button>)}</Stack></Box>
+                    {error && <Alert severity="error">{error}</Alert>}
+                    <Button type="submit" variant="contained" size="large" disabled={loading} sx={{ py: 1.6, borderRadius: 2.5, fontWeight: 800, textTransform: 'none' }}>{loading ? 'Checking requirements…' : 'Check visa requirements →'}</Button>
+                  </Stack>
+                </Box>
+              </CardContent>
+            </Card>
+            <Typography variant="caption" color="text.secondary">✦ WebLLM-powered private assistant available on WebGPU-compatible browsers.</Typography>
+          </Stack>
+        ) : (
+          <Stack spacing={3}>
+            <ChecklistResult checklist={checklist} onReset={reset} />
+            <VisaAssistant context={{ passport: checklist.countryFrom, destination: checklist.countryTo, purpose: checklist.visaType }} />
+          </Stack>
+        )}
+      </Container>
     </Box>
   );
 };
