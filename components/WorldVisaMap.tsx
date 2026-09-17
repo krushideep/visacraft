@@ -4,14 +4,8 @@ import { COUNTRIES } from '../constants';
 
 const DATA_URL = 'https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv';
 const WORLD_URL = 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson';
-// India is deliberately overridden with the Survey-of-India-derived national boundary.
-// The global basemap remains a discovery/interaction layer; this avoids relying on a
-// generic world dataset for India's politically sensitive boundary depiction.
 const INDIA_OFFICIAL_URL = 'https://raw.githubusercontent.com/datameet/maps/master/Country/india-soi.geojson';
 
-// Visa categories are the only fill encoding on the map. The selected passport is
-// indicated by a boundary, not by a different fill color, so it never conflicts with
-// the visa-access legend.
 const COLORS = {
   free: '#63ad69',
   voa: '#a9d67f',
@@ -27,28 +21,83 @@ const LABELS: Record<Category, string> = {
   required: 'Visa required',
   unknown: 'Not in dataset',
 };
-const countryByCode = new Map(COUNTRIES.map(c => [c.code, c]));
+
 const normalize = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+const countryByCode = new Map(COUNTRIES.map(c => [c.code.toUpperCase(), c]));
+const countryByName = new Map(COUNTRIES.map(c => [normalize(c.name), c.code.toUpperCase()]));
+
+const NAME_ALIASES: Record<string, string> = {
+  unitedstatesofamerica: 'US',
+  unitedstates: 'US',
+  russianfederation: 'RU',
+  southkorea: 'KR',
+  republicofkorea: 'KR',
+  northkorea: 'KP',
+  democraticpeoplesrepublicofkorea: 'KP',
+  czechia: 'CZ',
+  czechrepublic: 'CZ',
+  slovakia: 'SK',
+  swaziland: 'SZ',
+  eswatini: 'SZ',
+  myanmar: 'MM',
+  burma: 'MM',
+  iran: 'IR',
+  bolivia: 'BO',
+  venezuela: 'VE',
+  moldova: 'MD',
+  tanzania: 'TZ',
+  laos: 'LA',
+  vietnam: 'VN',
+  syria: 'SY',
+  palestine: 'PS',
+  taiwan: 'TW',
+  macau: 'MO',
+  macao: 'MO',
+  brunei: 'BN',
+  capeverde: 'CV',
+  ivorycoast: 'CI',
+  costaica: 'CR',
+  democraticrepublicofthecongo: 'CD',
+  congo: 'CG',
+  bolivia: 'BO',
+  turkey: 'TR',
+  türkiye: 'TR',
+};
+
+function validIso2(value: unknown): string {
+  const code = String(value ?? '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(code) ? code : '';
+}
 
 function countryCode(feature: any): string {
   const properties = feature?.properties ?? {};
-  // geo-countries has used both Natural Earth-style ISO_A2 fields and the
-  // newer ISO3166-1-Alpha-2 schema. Support both so the visa matrix always
-  // joins to the geometry.
-  return String(
-    properties.ISO_A2 ||
-    properties.ISO_A2_EH ||
-    properties.ISO_A2_CODE ||
-    properties['ISO3166-1-Alpha-2'] ||
-    properties.iso_a2 ||
-    ''
-  ).toUpperCase();
+  const candidates = [
+    properties.ISO_A2,
+    properties.ISO_A2_EH,
+    properties.ISO_A2_CODE,
+    properties['ISO3166-1-Alpha-2'],
+    properties.iso_a2,
+    properties.ISO2,
+  ];
+  for (const candidate of candidates) {
+    const code = validIso2(candidate);
+    if (code) return code;
+  }
+
+  const names = [properties.ADMIN, properties.NAME, properties.name, properties.NAME_EN, properties.SOVEREIGNT];
+  for (const name of names) {
+    const key = normalize(String(name ?? ''));
+    const code = NAME_ALIASES[key] || countryByName.get(key);
+    if (code) return code;
+  }
+  return '';
 }
 
 function classify(value?: string): Category {
   if (!value) return 'unknown';
-  const v = normalize(value);
-  if (/^\d+$/.test(value) || v === 'visafree') return 'free';
+  const raw = String(value).trim();
+  const v = normalize(raw);
+  if (/^\d+$/.test(raw) || v === 'visafree') return 'free';
   if (v === 'visaonarrival') return 'voa';
   if (v === 'evisa' || v === 'eta') return 'evisa';
   if (v === 'visarequired' || v === 'noadmission') return 'required';
@@ -64,7 +113,7 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
   const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const passportCode = COUNTRIES.find(c => c.name === passport)?.code ?? 'IN';
+  const passportCode = COUNTRIES.find(c => c.name === passport)?.code?.toUpperCase() ?? 'IN';
 
   useEffect(() => {
     let cancelled = false;
@@ -78,8 +127,6 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
         if (cancelled) return;
         const worldFeatures = world?.features ?? [];
         const indiaFeature = indiaOfficial?.features?.[0];
-        // Replace only India's world-basemap feature. All other countries retain
-        // the existing global geometry and therefore the existing visa interaction.
         const mergedFeatures = indiaFeature
           ? [
               ...worldFeatures.filter((feature: any) => countryCode(feature) !== 'IN'),
@@ -105,8 +152,9 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
   const rulesByDestination = useMemo(() => {
     const map = new Map<string, string>();
     rules.forEach(r => {
-      if (r.Passport?.toUpperCase() === passportCode) {
-        map.set(r.Destination?.toUpperCase(), r.Requirement);
+      if (r.Passport?.trim().toUpperCase() === passportCode) {
+        const destination = validIso2(r.Destination);
+        if (destination) map.set(destination, r.Requirement);
       }
     });
     return map;
@@ -131,21 +179,16 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
     layer.selectAll('path').data(countries).join('path')
       .attr('d', path as any)
       .attr('fill', (d: any) => COLORS[classify(rulesByDestination.get(countryCode(d)))] )
-      .attr('fill-opacity', (d: any) => classify(rulesByDestination.get(countryCode(d))) === 'unknown' ? 0.72 : 1)
+      .attr('fill-opacity', (d: any) => classify(rulesByDestination.get(countryCode(d))) === 'unknown' ? 0.62 : 1)
       .attr('stroke', '#ffffff')
       .attr('stroke-width', 0.7)
       .style('cursor', 'pointer')
-      .on('mouseenter', function() {
-        d3.select(this).attr('stroke', '#17202a').attr('stroke-width', 1.5);
-      })
-      .on('mouseleave', function() {
-        d3.select(this).attr('stroke', '#ffffff').attr('stroke-width', 0.7);
-      })
+      .on('mouseenter', function() { d3.select(this).attr('stroke', '#17202a').attr('stroke-width', 1.5); })
+      .on('mouseleave', function() { d3.select(this).attr('stroke', '#ffffff').attr('stroke-width', 0.7); })
       .on('click', (_event, d: any) => {
         const code = countryCode(d);
         const name = countryByCode.get(code)?.name || d.properties?.ADMIN || d.properties?.NAME || d.properties?.name || 'Destination';
-        const category = classify(rulesByDestination.get(code));
-        onDestinationSelect?.(name, category);
+        onDestinationSelect?.(name, classify(rulesByDestination.get(code)));
       })
       .append('title')
       .text((d: any) => {
@@ -154,7 +197,6 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
         return `${name} — ${LABELS[classify(rulesByDestination.get(code))]}`;
       });
 
-    // Highlight the selected passport country without changing its category fill.
     layer.selectAll('path')
       .filter((d: any) => countryCode(d) === passportCode)
       .attr('stroke', '#17202a')
