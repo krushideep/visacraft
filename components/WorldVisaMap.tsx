@@ -1,117 +1,104 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Chip, CircularProgress, Stack, Typography } from '@mui/material';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { feature } from 'topojson-client';
-import { VISA_ACCESS, VISA_ACCESS_LABELS, VisaAccessCategory } from '../data/visaAccess';
+import { COUNTRIES } from '../constants';
 
-const COLORS: Record<VisaAccessCategory, string> = {
-  free: '#78a978',
-  voa: '#a8c28b',
-  evisa: '#d4b36c',
-  required: '#cc8b82',
-  unknown: '#d7dadd',
-};
+const DATA_URL = 'https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv';
+const WORLD_URL = 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson';
 
-const ALIASES: Record<string, string> = {
-  'United States': 'United States of America',
-  USA: 'United States of America',
-  UK: 'United Kingdom',
-  Türkiye: 'Türkiye',
-  Turkey: 'Türkiye',
-};
+const COLORS = { free: '#6f9f72', voa: '#a7bd7e', evisa: '#d2b06a', required: '#c9827d', unknown: '#d9dde0' } as const;
+type Category = keyof typeof COLORS;
+const LABELS: Record<Category, string> = { free: 'Visa free', voa: 'Visa on arrival', evisa: 'eVisa / online', required: 'Visa required', unknown: 'Not in dataset' };
+const countryByCode = new Map(COUNTRIES.map(c => [c.code, c]));
+const normalize = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-function categoryFor(passport: string, destination: string): VisaAccessCategory {
-  const target = ALIASES[destination] ?? destination;
-  return VISA_ACCESS.find(
-    (record) => normalize(record.passport) === normalize(passport) && normalize(record.destination) === normalize(target),
-  )?.category ?? 'unknown';
+function classify(value?: string): Category {
+  if (!value) return 'unknown';
+  const v = normalize(value);
+  if (/^\d+$/.test(value) || v === 'visafree') return 'free';
+  if (v === 'visaonarrival') return 'voa';
+  if (v === 'evisa' || v === 'eta') return 'evisa';
+  if (v === 'visarequired' || v === 'noadmission') return 'required';
+  return 'unknown';
 }
 
-export interface WorldVisaMapProps {
-  passport: string;
-  onDestinationSelect?: (destination: string, category: VisaAccessCategory) => void;
-}
+interface Props { passport: string; onDestinationSelect?: (destination: string, category: Category) => void; }
+interface Row { Passport: string; Destination: string; Requirement: string; }
 
-const WorldVisaMap: React.FC<WorldVisaMapProps> = ({ passport, onDestinationSelect }) => {
+const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [rules, setRules] = useState<Row[]>([]);
   const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const passportCode = COUNTRIES.find(c => c.name === passport)?.code ?? 'IN';
 
-  React.useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-      .then((response) => {
-        if (!response.ok) throw new Error('Map data could not be loaded');
-        return response.json();
+    Promise.all([d3.csv(DATA_URL), d3.json<any>(WORLD_URL)])
+      .then(([csv, world]) => {
+        if (cancelled) return;
+        setRules(csv as Row[]);
+        setCountries(world?.features ?? []);
+        setLoading(false);
       })
-      .then((world) => {
-        if (!cancelled) {
-          const collection = feature(world, world.objects.countries) as any;
-          setCountries(collection.features ?? []);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
     return () => { cancelled = true; };
   }, []);
 
-  const projection = useMemo(() => d3.geoNaturalEarth1().fitSize([960, 500], { type: 'FeatureCollection', features: countries }), [countries]);
-  const path = useMemo(() => d3.geoPath(projection), [projection]);
+  const rulesByDestination = useMemo(() => {
+    const map = new Map<string, string>();
+    rules.forEach(r => { if (r.Passport === passportCode) map.set(r.Destination, r.Requirement); });
+    return map;
+  }, [rules, passportCode]);
 
   const counts = useMemo(() => {
-    const result: Record<VisaAccessCategory, number> = { free: 0, voa: 0, evisa: 0, required: 0, unknown: 0 };
-    VISA_ACCESS.filter((r) => normalize(r.passport) === normalize(passport)).forEach((r) => { result[r.category] += 1; });
-    return result;
-  }, [passport]);
+    const c: Record<Category, number> = { free: 0, voa: 0, evisa: 0, required: 0, unknown: 0 };
+    rulesByDestination.forEach(v => { c[classify(v)] += 1; });
+    return c;
+  }, [rulesByDestination]);
 
-  return (
-    <Box sx={{ width: '100%', border: '1px solid', borderColor: 'divider', borderRadius: 4, overflow: 'hidden', background: '#eef0f2' }}>
-      <Box sx={{ position: 'relative' }}>
-        {loading && (
-          <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 360, color: 'text.secondary' }}>
-            <CircularProgress size={26} /><Typography variant="caption" sx={{ mt: 1 }}>Loading world map…</Typography>
-          </Stack>
-        )}
-        {!loading && countries.length === 0 && (
-          <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 360, p: 3 }}>
-            <Typography fontWeight={700}>World map unavailable</Typography>
-            <Typography variant="body2" color="text.secondary">Check your network connection and reload.</Typography>
-          </Stack>
-        )}
-        {!loading && countries.length > 0 && (
-          <svg viewBox="0 0 960 500" width="100%" role="img" aria-label={`Visa access map for ${passport} passport`}>
-            <rect width="960" height="500" fill="#eef0f2" />
-            {countries.map((country, index) => {
-              const destination = country.properties?.name ?? `Country ${country.id}`;
-              const category = categoryFor(passport, destination);
-              return (
-                <path
-                  key={`${country.id}-${index}`}
-                  d={path(country) ?? undefined}
-                  fill={COLORS[category]}
-                  stroke="#fff"
-                  strokeWidth="0.7"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onDestinationSelect?.(destination, category)}
-                >
-                  <title>{destination} — {VISA_ACCESS_LABELS[category]}</title>
-                </path>
-              );
-            })}
-          </svg>
-        )}
-      </Box>
-      <Stack direction="row" flexWrap="wrap" gap={1} sx={{ p: 1.5, background: '#fff', borderTop: '1px solid', borderColor: 'divider' }}>
-        {(['free', 'voa', 'evisa', 'required'] as VisaAccessCategory[]).map((category) => (
-          <Chip key={category} size="small" label={`${VISA_ACCESS_LABELS[category]} · ${counts[category]}`} sx={{ background: COLORS[category] + '35', fontWeight: 650 }} />
-        ))}
-      </Stack>
-    </Box>
-  );
+  useEffect(() => {
+    if (!svgRef.current || !countries.length) return;
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
+    const width = 960, height = 500;
+    const collection = { type: 'FeatureCollection', features: countries } as any;
+    const projection = d3.geoNaturalEarth1().fitSize([width, height], collection);
+    const path = d3.geoPath(projection);
+    const layer = svg.append('g');
+    layer.selectAll('path').data(countries).join('path')
+      .attr('d', path as any)
+      .attr('fill', (d: any) => {
+        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
+        return COLORS[classify(rulesByDestination.get(code))];
+      })
+      .attr('stroke', '#fff').attr('stroke-width', 0.65)
+      .style('cursor', 'pointer')
+      .on('mouseenter', function() { d3.select(this).attr('stroke', '#17202a').attr('stroke-width', 1.5); })
+      .on('mouseleave', function() { d3.select(this).attr('stroke', '#fff').attr('stroke-width', 0.65); })
+      .on('click', (_event, d: any) => {
+        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
+        const name = countryByCode.get(code)?.name || d.properties?.ADMIN || d.properties?.NAME || 'Destination';
+        const category = classify(rulesByDestination.get(code));
+        onDestinationSelect?.(name, category);
+      })
+      .append('title')
+      .text((d: any) => {
+        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
+        const name = countryByCode.get(code)?.name || d.properties?.ADMIN || d.properties?.NAME || 'Destination';
+        return `${name} — ${LABELS[classify(rulesByDestination.get(code))]}`;
+      });
+  }, [countries, rulesByDestination, onDestinationSelect]);
+
+  return <section>
+    <style>{`.vc-map{position:relative;background:#edf0f2;border:1px solid #e1e5e9;border-radius:22px;overflow:hidden}.vc-map svg{display:block;width:100%;height:auto}.vc-map-loading{min-height:360px;display:grid;place-items:center;color:#68737d;font-size:14px}.vc-map-legend{display:flex;flex-wrap:wrap;gap:8px;padding:13px 16px;background:#fff;border-top:1px solid #e1e5e9}.vc-chip{border:0;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700}.vc-note{font-size:11px;color:#7a848d;margin:9px 4px 0}`}</style>
+    <div className="vc-map">
+      {loading ? <div className="vc-map-loading">Loading the world visa atlas…</div> : error ? <div className="vc-map-loading">Could not load the visa atlas. Reload to try again.</div> : <svg ref={svgRef} viewBox="0 0 960 500" role="img" aria-label={`Visa access map for ${passport} passport`} />}
+      <div className="vc-map-legend">{(['free','voa','evisa','required'] as Category[]).map(k => <span className="vc-chip" key={k} style={{ background: COLORS[k] + '35' }}>{LABELS[k]} · {counts[k]}</span>)}</div>
+    </div>
+    <p className="vc-note">Discovery layer based on the Passport Index matrix. VisaCraft must verify individual rules against official government sources before treating them as authoritative.</p>
+  </section>;
 };
 
 export default WorldVisaMap;
