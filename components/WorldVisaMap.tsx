@@ -4,12 +4,25 @@ import { COUNTRIES } from '../constants';
 
 const DATA_URL = 'https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv';
 const WORLD_URL = 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson';
+// India is deliberately overridden with the Survey-of-India-derived national boundary.
+// The global basemap remains a discovery/interaction layer; this avoids relying on a
+// generic world dataset for India's politically sensitive boundary depiction.
+const INDIA_OFFICIAL_URL = 'https://raw.githubusercontent.com/datameet/maps/master/Country/india-soi.geojson';
 
 const COLORS = { free: '#6f9f72', voa: '#a7bd7e', evisa: '#d2b06a', required: '#c9827d', unknown: '#d9dde0' } as const;
 type Category = keyof typeof COLORS;
 const LABELS: Record<Category, string> = { free: 'Visa free', voa: 'Visa on arrival', evisa: 'eVisa / online', required: 'Visa required', unknown: 'Not in dataset' };
 const countryByCode = new Map(COUNTRIES.map(c => [c.code, c]));
 const normalize = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function countryCode(feature: any): string {
+  return String(
+    feature?.properties?.ISO_A2 ||
+    feature?.properties?.ISO_A2_EH ||
+    feature?.properties?.ISO_A2_CODE ||
+    ''
+  ).toUpperCase();
+}
 
 function classify(value?: string): Category {
   if (!value) return 'unknown';
@@ -35,11 +48,33 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    Promise.all([d3.csv(DATA_URL), d3.json<any>(WORLD_URL)])
-      .then(([csv, world]) => {
+    Promise.all([
+      d3.csv(DATA_URL),
+      d3.json<any>(WORLD_URL),
+      d3.json<any>(INDIA_OFFICIAL_URL),
+    ])
+      .then(([csv, world, indiaOfficial]) => {
         if (cancelled) return;
+        const worldFeatures = world?.features ?? [];
+        const indiaFeature = indiaOfficial?.features?.[0];
+        // Replace only India's world-basemap feature. All other countries retain
+        // the existing global geometry and therefore the existing visa interaction.
+        const mergedFeatures = indiaFeature
+          ? [
+              ...worldFeatures.filter((feature: any) => countryCode(feature) !== 'IN'),
+              {
+                ...indiaFeature,
+                properties: {
+                  ...(indiaFeature.properties ?? {}),
+                  ISO_A2: 'IN',
+                  ADMIN: 'India',
+                  NAME: 'India',
+                },
+              },
+            ]
+          : worldFeatures;
         setRules(csv as Row[]);
-        setCountries(world?.features ?? []);
+        setCountries(mergedFeatures);
         setLoading(false);
       })
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
@@ -69,23 +104,20 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
     const layer = svg.append('g');
     layer.selectAll('path').data(countries).join('path')
       .attr('d', path as any)
-      .attr('fill', (d: any) => {
-        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
-        return COLORS[classify(rulesByDestination.get(code))];
-      })
+      .attr('fill', (d: any) => COLORS[classify(rulesByDestination.get(countryCode(d)))] )
       .attr('stroke', '#fff').attr('stroke-width', 0.65)
       .style('cursor', 'pointer')
       .on('mouseenter', function() { d3.select(this).attr('stroke', '#17202a').attr('stroke-width', 1.5); })
       .on('mouseleave', function() { d3.select(this).attr('stroke', '#fff').attr('stroke-width', 0.65); })
       .on('click', (_event, d: any) => {
-        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
+        const code = countryCode(d);
         const name = countryByCode.get(code)?.name || d.properties?.ADMIN || d.properties?.NAME || 'Destination';
         const category = classify(rulesByDestination.get(code));
         onDestinationSelect?.(name, category);
       })
       .append('title')
       .text((d: any) => {
-        const code = String(d.properties?.ISO_A2 || d.properties?.ISO_A2_EH || '').toUpperCase();
+        const code = countryCode(d);
         const name = countryByCode.get(code)?.name || d.properties?.ADMIN || d.properties?.NAME || 'Destination';
         return `${name} — ${LABELS[classify(rulesByDestination.get(code))]}`;
       });
@@ -97,7 +129,7 @@ const WorldVisaMap: React.FC<Props> = ({ passport, onDestinationSelect }) => {
       {loading ? <div className="vc-map-loading">Loading the world visa atlas…</div> : error ? <div className="vc-map-loading">Could not load the visa atlas. Reload to try again.</div> : <svg ref={svgRef} viewBox="0 0 960 500" role="img" aria-label={`Visa access map for ${passport} passport`} />}
       <div className="vc-map-legend">{(['free','voa','evisa','required'] as Category[]).map(k => <span className="vc-chip" key={k} style={{ background: COLORS[k] + '35' }}>{LABELS[k]} · {counts[k]}</span>)}</div>
     </div>
-    <p className="vc-note">Discovery layer based on the Passport Index matrix. VisaCraft must verify individual rules against official government sources before treating them as authoritative.</p>
+    <p className="vc-note">India's boundary is overridden with the Survey-of-India-derived boundary dataset. Visa access remains a discovery layer based on the Passport Index matrix; individual visa rules must be verified against official government sources.</p>
   </section>;
 };
 
