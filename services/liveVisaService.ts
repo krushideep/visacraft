@@ -1,11 +1,11 @@
-import { VisaChecklist, VisaType } from "../types";
+import { VisaType } from "../types";
 
 export interface LiveVisaCheck {
-  checklist: VisaChecklist;
   sourceCheckedAt: string;
   sourceEvidence: { title: string; url: string; excerpt?: string }[];
   jev: {
     category: string;
+    probabilities?: Record<string, number>;
     confidence?: number;
     needsReview?: boolean;
   };
@@ -23,7 +23,6 @@ export const fetchLiveVisaCheck = async (
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passport, destination, purpose, accessCategory }),
     });
-
     if (!response.ok) return null;
     return await response.json() as LiveVisaCheck;
   } catch {
