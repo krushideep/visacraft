@@ -28,6 +28,29 @@ export interface ChecklistItem {
   requirements: string[];
 }
 
+export type DocumentCategory =
+  | 'passport'
+  | 'financial'
+  | 'accommodation'
+  | 'itinerary'
+  | 'insurance'
+  | 'photo'
+  | 'form'
+  | 'other';
+
+export interface DocumentVerificationResult {
+  status: 'verified' | 'failed' | 'needs_review' | 'expired';
+  method: 'mrz' | 'llm_sanity_check' | 'unattempted';
+  category: DocumentCategory;
+  checkedAt: string;
+  confidence: number;
+  summary: string;
+  fields?: Record<string, string>;
+  concerns?: string[];
+  ocrConfidence?: number;
+  inputMode: 'ocr' | 'manual_entry' | 'ocr_corrected';
+}
+
 export enum VisaType {
   TOURIST = 'Tourist',
   BUSINESS = 'Business',

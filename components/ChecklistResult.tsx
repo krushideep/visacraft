@@ -1,6 +1,8 @@
 
 import React, { useState, useRef } from 'react';
-import { VisaChecklist } from '../types';
+import { VisaChecklist, DocumentVerificationResult } from '../types';
+import { inferDocumentCategory } from '../services/documentVerificationService';
+import DocumentVerificationPanel, { statusDotClass } from './DocumentVerificationPanel';
 
 interface ChecklistResultProps {
   checklist: VisaChecklist;
@@ -11,6 +13,10 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [isExporting, setIsExporting] = useState(false);
   const checklistRef = useRef<HTMLDivElement>(null);
+  // Document verification results live here (not on `checklist`) so they never
+  // get written into aiService's localStorage cache alongside OCR'd personal data.
+  const [verifications, setVerifications] = useState<Record<string, DocumentVerificationResult>>({});
+  const [expandedVerification, setExpandedVerification] = useState<string | null>(null);
 
   const handleExportPDF = async () => {
     const h2p = (window as any).html2pdf;
@@ -29,6 +35,8 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
       const data: VisaChecklist = JSON.parse(storedData);
 
       // 3. GENERATE FORMATTED TEMPLATE
+      // Note: document verification results are intentionally not included in the
+      // PDF export yet (out of scope for this iteration) — future extension point.
       const template = `
         <div style="font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif; color: #1e293b; max-width: 850px; margin: 0 auto; background: white;">
           <!-- Formal Header -->
@@ -290,18 +298,46 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
                     {item.requirements.map((req, reqIdx) => {
                       const itemKey = `section-${sectionIdx}-req-${reqIdx}`;
                       const isChecked = checkedItems[itemKey];
+                      const verification = verifications[itemKey];
+                      const isExpanded = expandedVerification === itemKey;
                       return (
-                        <div
-                          key={itemKey}
-                          onClick={() => toggleItem(itemKey)}
-                          className={`flex items-start gap-3 py-1 cursor-pointer group transition-all`}
-                        >
-                          <div className="mt-1 text-[#005fb0] opacity-40 group-hover:opacity-100 transition-opacity">
-                            •
+                        <div key={itemKey}>
+                          <div
+                            onClick={() => toggleItem(itemKey)}
+                            className={`flex items-start gap-3 py-1 cursor-pointer group transition-all`}
+                          >
+                            <div className="mt-1 text-[#005fb0] opacity-40 group-hover:opacity-100 transition-opacity">
+                              •
+                            </div>
+                            <p className={`flex-1 text-lg font-medium leading-relaxed ${isChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-700'}`}>
+                              {req}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedVerification(isExpanded ? null : itemKey);
+                              }}
+                              className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-[#005fb0] no-print"
+                              title={verification ? verification.summary : 'Verify this document'}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${statusDotClass(verification?.status)}`}></span>
+                              {verification ? 'Verification' : 'Verify'}
+                            </button>
                           </div>
-                          <p className={`text-lg font-medium leading-relaxed ${isChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-700'}`}>
-                            {req}
-                          </p>
+                          {isExpanded && (
+                            <div className="ml-7 no-print">
+                              <DocumentVerificationPanel
+                                requirementId={itemKey}
+                                requirementText={req}
+                                category={inferDocumentCategory(`${item.title} ${req}`)}
+                                existingResult={verification}
+                                onVerified={(id, result) =>
+                                  setVerifications((prev) => ({ ...prev, [id]: result }))
+                                }
+                              />
+                            </div>
+                          )}
                         </div>
                       );
                     })}

@@ -17,7 +17,8 @@
     "@mui/material": "^7.3.7",
     "d3": "^7.9.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
