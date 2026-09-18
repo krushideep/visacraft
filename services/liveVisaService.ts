@@ -13,6 +13,8 @@ export interface LiveVisaCheck {
     probabilities?: Record<string, number>;
     confidence?: number;
     needsReview?: boolean;
+    processingTime?: string;
+    fee?: string;
     model?: string;
   };
   live?: {

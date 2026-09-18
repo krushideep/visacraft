@@ -19,6 +19,8 @@ export interface VisaChecklist {
     jevCategory?: string;
     jevConfidence?: number;
     jevNeedsReview?: boolean;
+    jevProcessingTime?: string;
+    jevFee?: string;
     reason?: string;
   };
 }

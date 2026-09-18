@@ -42,6 +42,11 @@ const App:React.FC=()=>{
        setChecklist({
          ...base,
          visaCategory: liveLabel,
+         // Only override the discovery/rule-based placeholder ("See official
+         // source below") when Jev actually extracted a real value from the
+         // fetched evidence — never replace a real value with a blank one.
+         estimatedProcessingTime: live.jev.processingTime || base.estimatedProcessingTime,
+         expectedFee: live.jev.fee || base.expectedFee,
          officialLinks: liveSources.length ? liveSources : base.officialLinks,
          additionalTips:[
            ...base.additionalTips,
@@ -52,11 +57,14 @@ const App:React.FC=()=>{
            live.jev.confidence != null ? `Jev classification confidence: ${Math.round(live.jev.confidence*100)}%.` : 'Jev classification completed.',
          ],
          liveVerification:{
+           status: live.live?.status === 'verified' ? 'verified' : 'needs_review',
            checkedAt:live.sourceCheckedAt,
            sourceEvidence:live.sourceEvidence.map(s=>({title:s.title,url:s.url})),
            jevCategory:live.jev.category,
            jevConfidence:live.jev.confidence,
            jevNeedsReview:live.jev.needsReview,
+           jevProcessingTime:live.jev.processingTime,
+           jevFee:live.jev.fee,
          },
        });
      } else {
