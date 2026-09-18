@@ -277,67 +277,73 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
             {checklist.checklistItems?.map((item, sectionIdx) => {
               const sectionKey = `section-${sectionIdx}`;
               const isSectionChecked = checkedItems[sectionKey];
+              const sectionVerification = verifications[sectionKey];
+              const isVerificationExpanded = expandedVerification === sectionKey;
+              const sectionTitle = item.title.replace(/^\d+\.\s*/, '');
+              const sectionCategory = inferDocumentCategory(sectionTitle);
+              // Only sections that map to an actual document type get a
+              // verify affordance — sections like "Travel purpose" or "Final
+              // verification" are organizational, not something to upload.
+              const isVerifiable = sectionCategory !== 'other';
 
               return (
                 <div key={sectionIdx} className="animate-fade-in">
-                  <div
-                    onClick={() => toggleItem(sectionKey)}
-                    className="flex items-center gap-4 mb-6 cursor-pointer group"
-                  >
-                    <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all ${isSectionChecked
-                      ? 'bg-[#005fb0] border-[#005fb0] text-white'
-                      : 'border-slate-200 text-transparent group-hover:border-[#005fb0]'}`}
+                  <div className="flex items-center gap-4 mb-6 flex-wrap">
+                    <div
+                      onClick={() => toggleItem(sectionKey)}
+                      className="flex items-center gap-4 cursor-pointer group flex-1 min-w-0"
                     >
-                      <i className="fa-solid fa-check text-sm"></i>
+                      <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all flex-shrink-0 ${isSectionChecked
+                        ? 'bg-[#005fb0] border-[#005fb0] text-white'
+                        : 'border-slate-200 text-transparent group-hover:border-[#005fb0]'}`}
+                      >
+                        <i className="fa-solid fa-check text-sm"></i>
+                      </div>
+                      <h3 className={`text-2xl font-black tracking-tight transition-all ${isSectionChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-900'}`}>
+                        {sectionTitle}
+                      </h3>
                     </div>
-                    <h3 className={`text-2xl font-black tracking-tight transition-all ${isSectionChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-900'}`}>
-                      {item.title.replace(/^\d+\.\s*/, '')}
-                    </h3>
+                    {isVerifiable && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedVerification(isVerificationExpanded ? null : sectionKey)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-500 hover:text-[#005fb0] hover:border-[#005fb0] transition-colors no-print"
+                        title={sectionVerification ? sectionVerification.summary : `Verify your ${sectionTitle.toLowerCase()}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${statusDotClass(sectionVerification?.status)}`}></span>
+                        {sectionVerification ? 'Verification' : 'Verify document'}
+                      </button>
+                    )}
                   </div>
+                  {isVerifiable && isVerificationExpanded && (
+                    <div className="ml-14 mb-6 no-print">
+                      <DocumentVerificationPanel
+                        requirementId={sectionKey}
+                        requirementText={sectionTitle}
+                        category={sectionCategory}
+                        existingResult={sectionVerification}
+                        onVerified={(id, result) =>
+                          setVerifications((prev) => ({ ...prev, [id]: result }))
+                        }
+                      />
+                    </div>
+                  )}
                   <div className="ml-14 space-y-3">
                     {item.requirements.map((req, reqIdx) => {
                       const itemKey = `section-${sectionIdx}-req-${reqIdx}`;
                       const isChecked = checkedItems[itemKey];
-                      const verification = verifications[itemKey];
-                      const isExpanded = expandedVerification === itemKey;
                       return (
-                        <div key={itemKey}>
-                          <div
-                            onClick={() => toggleItem(itemKey)}
-                            className={`flex items-start gap-3 py-1 cursor-pointer group transition-all`}
-                          >
-                            <div className="mt-1 text-[#005fb0] opacity-40 group-hover:opacity-100 transition-opacity">
-                              •
-                            </div>
-                            <p className={`flex-1 text-lg font-medium leading-relaxed ${isChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-700'}`}>
-                              {req}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedVerification(isExpanded ? null : itemKey);
-                              }}
-                              className="mt-1 flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-[#005fb0] no-print"
-                              title={verification ? verification.summary : 'Verify this document'}
-                            >
-                              <span className={`w-2 h-2 rounded-full ${statusDotClass(verification?.status)}`}></span>
-                              {verification ? 'Verification' : 'Verify'}
-                            </button>
+                        <div
+                          key={itemKey}
+                          onClick={() => toggleItem(itemKey)}
+                          className="flex items-start gap-3 py-1 cursor-pointer group transition-all"
+                        >
+                          <div className="mt-1 text-[#005fb0] opacity-40 group-hover:opacity-100 transition-opacity">
+                            •
                           </div>
-                          {isExpanded && (
-                            <div className="ml-7 no-print">
-                              <DocumentVerificationPanel
-                                requirementId={itemKey}
-                                requirementText={req}
-                                category={inferDocumentCategory(`${item.title} ${req}`)}
-                                existingResult={verification}
-                                onVerified={(id, result) =>
-                                  setVerifications((prev) => ({ ...prev, [id]: result }))
-                                }
-                              />
-                            </div>
-                          )}
+                          <p className={`text-lg font-medium leading-relaxed ${isChecked ? 'text-slate-400 line-through opacity-60' : 'text-slate-700'}`}>
+                            {req}
+                          </p>
                         </div>
                       );
                     })}
