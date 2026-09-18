@@ -1,4 +1,4 @@
-import { VISA_SOURCES } from "../services/visaSources";
+import { VISA_SOURCES } from "../services/visaSources.js";
 
 type RequestBody = {
   passport?: string;
