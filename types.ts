@@ -13,11 +13,13 @@ export interface VisaChecklist {
   applicationForms: { title: string; url: string }[];
   checklistItems: ChecklistItem[];
   liveVerification?: {
+    status: 'verified' | 'needs_review' | 'unavailable';
     checkedAt: string;
     sourceEvidence: { title: string; url: string }[];
     jevCategory?: string;
     jevConfidence?: number;
     jevNeedsReview?: boolean;
+    reason?: string;
   };
 }
 
