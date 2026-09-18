@@ -7,6 +7,14 @@ export interface OcrResult {
   confidence: number; // normalized 0-1 (tesseract reports 0-100)
 }
 
+// The worker/core/lang paths must be resolved to absolute URLs, not paths
+// relative to the page: createWorker loads them via importScripts() inside a
+// blob: worker context, which cannot resolve a root-relative "/tesseract/..."
+// path against the app's deployed base (e.g. GitHub Pages serves this app
+// under "/visacraft/", not the domain root). document.baseURI reflects the
+// actual deployed base regardless of how Vite's `base` config is set.
+const assetUrl = (relativePath: string) => new URL(relativePath, document.baseURI).toString();
+
 // Unlike webllmService's memoized engine singleton, OCR workers are cheap and
 // short-lived: we spin one up per verification and terminate it afterward
 // rather than keeping a worker resident for the life of the app.
@@ -14,9 +22,9 @@ export const runOcr = async (image: File | Blob): Promise<OcrResult> => {
   const { createWorker } = await import('tesseract.js');
 
   const worker = await createWorker('eng', 1, {
-    workerPath: '/tesseract/worker.min.js',
-    corePath: '/tesseract/tesseract-core.wasm.js',
-    langPath: '/tesseract/lang-data',
+    workerPath: assetUrl('tesseract/worker.min.js'),
+    corePath: assetUrl('tesseract/tesseract-core.wasm.js'),
+    langPath: assetUrl('tesseract/lang-data'),
   });
 
   try {
