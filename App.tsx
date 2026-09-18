@@ -60,7 +60,17 @@ const App:React.FC=()=>{
          },
        });
      } else {
-       setChecklist({...base,additionalTips:[...base.additionalTips,'Live official-source verification was unavailable for this request; the displayed result is the discovery/rule-layer result.']});
+       const reason='The live verification request did not reach the VisaCraft API. The checklist below is the deterministic rule/discovery result.';
+       setChecklist({
+         ...base,
+         additionalTips:[...base.additionalTips, reason],
+         liveVerification:{
+           status:'unavailable',
+           checkedAt:new Date().toISOString(),
+           sourceEvidence:[],
+           reason,
+         },
+       });
      }
    }catch(err){setError(err instanceof Error?err.message:'Could not generate visa checklist.')}finally{setLoading(false)}
  };
