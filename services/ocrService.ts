@@ -50,3 +50,52 @@ export const runOcr = async (image: File | Blob, lang: OcrLang = 'eng'): Promise
 // terminates its own worker, so this exists only if a caller wants to be
 // defensive without knowing that detail.
 export const terminateOcr = async () => {};
+
+const MRZ_CHAR_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
+
+const normalizeToTd3Length = (s: string) => {
+  const cleaned = s.replace(/[^A-Z0-9<]/gi, '').toUpperCase();
+  return cleaned.length >= 44 ? cleaned.slice(0, 44) : cleaned.padEnd(44, '<');
+};
+
+export interface MrzLineOcrResult {
+  line1: string;
+  line2: string;
+  confidence: number;
+}
+
+// Isolates each MRZ line individually — morphology-based line detection,
+// ink-pixel crop refinement (services/mrzLineDetection.ts, using image-js —
+// pure JS, no WASM) — then OCRs each line separately with a single-line page
+// segmentation mode and a character whitelist, rather than OCR'ing the whole
+// image at once the way runOcr() does. This is a meaningfully more accurate
+// (but heavier) path specifically for reading the MRZ; non-passport
+// documents don't use this.
+export const runMrzLineOcr = async (image: File | Blob): Promise<MrzLineOcrResult | null> => {
+  const { detectMrzLines } = await import('./mrzLineDetection');
+  const { createWorker, PSM } = await import('tesseract.js');
+
+  const { line1Blob, line2Blob } = await detectMrzLines(image);
+
+  const worker = await createWorker('ocrb', 1, {
+    workerPath: assetUrl('tesseract/worker.min.js'),
+    corePath: assetUrl('tesseract/tesseract-core.wasm.js'),
+    langPath: assetUrl('tesseract/lang-data'),
+  });
+
+  try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: PSM.SINGLE_LINE,
+      tessedit_char_whitelist: MRZ_CHAR_WHITELIST,
+    });
+
+    const [res1, res2] = await Promise.all([worker.recognize(line1Blob), worker.recognize(line2Blob)]);
+    const line1 = normalizeToTd3Length(res1.data.text ?? '');
+    const line2 = normalizeToTd3Length(res2.data.text ?? '');
+    const confidence = Math.max(0, Math.min(1, ((res1.data.confidence ?? 0) + (res2.data.confidence ?? 0)) / 200));
+
+    return { line1, line2, confidence };
+  } finally {
+    await worker.terminate();
+  }
+};

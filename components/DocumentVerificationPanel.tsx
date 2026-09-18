@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { DocumentCategory, DocumentVerificationResult } from '../types';
-import { runOcr } from '../services/ocrService';
+import { runOcr, runMrzLineOcr } from '../services/ocrService';
 import { verifyPassportText, verifyGenericDocument } from '../services/documentVerificationService';
 
 interface DocumentVerificationPanelProps {
@@ -78,13 +78,27 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
         // perfectly. Instead, rank by whether each pass actually produced a
         // checksum-computable MRZ result — that's a much stronger,
         // domain-specific correctness signal than raw OCR confidence.
-        const [ocrbPass, engPass] = await Promise.all([runOcr(file, 'ocrb'), runOcr(file, 'eng')]);
+        const [ocrbPass, engPass, lineOcrPass] = await Promise.all([
+          runOcr(file, 'ocrb'),
+          runOcr(file, 'eng'),
+          // Heavier (loads OpenCV.js) but meaningfully more accurate: isolates
+          // and OCRs each MRZ line individually rather than the whole image.
+          // Caught separately so a failure here (e.g. OpenCV.js didn't load)
+          // doesn't take down the two whole-image candidates above.
+          runMrzLineOcr(file).catch(() => null),
+        ]);
         const rank = (r: DocumentVerificationResult) =>
           r.status === 'verified' || r.status === 'expired' ? 2 : r.status === 'failed' ? 1 : 0;
 
         const candidates = [
           { verification: verifyPassportText(ocrbPass.text, 'ocr'), ocrConfidence: ocrbPass.confidence },
           { verification: verifyPassportText(engPass.text, 'ocr'), ocrConfidence: engPass.confidence },
+          ...(lineOcrPass
+            ? [{
+                verification: verifyPassportText(`${lineOcrPass.line1}\n${lineOcrPass.line2}`, 'ocr'),
+                ocrConfidence: lineOcrPass.confidence,
+              }]
+            : []),
         ];
         const best = candidates.reduce((a, b) => (rank(b.verification) > rank(a.verification) ? b : a));
 
