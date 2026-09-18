@@ -72,7 +72,11 @@ const callJev = async (state: unknown) => {
   });
 
   if (!response.ok) return null;
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
 };
 
 export default async function handler(req: any, res: any) {
@@ -137,7 +141,12 @@ export default async function handler(req: any, res: any) {
     officialSources: evidence,
   };
 
-  const jevRaw = await callJev(state);
+  let jevRaw: any = null;
+  try {
+    jevRaw = await callJev(state);
+  } catch {
+    jevRaw = null;
+  }
   const jev = jevRaw
     ? extractJev(jevRaw)
     : { category: "needs_review", needsReview: true };
