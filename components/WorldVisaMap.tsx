@@ -2,93 +2,34 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { COUNTRIES } from '../constants';
 
-const DATA_URL = 'https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv';
-const WORLD_URL = 'https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson';
-const INDIA_OFFICIAL_URL = 'https://raw.githubusercontent.com/datameet/maps/master/Country/india-soi.geojson';
-const COLORS = { free:'#63ad69', voa:'#a9d67f', evisa:'#f1c75b', required:'#df8585', unknown:'#d8dde2' } as const;
-type Category = keyof typeof COLORS;
-const LABELS: Record<Category,string> = { free:'Visa free', voa:'Visa on arrival', evisa:'eVisa / online', required:'Visa required', unknown:'Not in dataset' };
-const normalize = (v:string) => v.toLowerCase().replace(/[^a-z0-9]/g,'');
-const countryByCode = new Map(COUNTRIES.map(c=>[c.code.toUpperCase(),c]));
-const countryByName = new Map(COUNTRIES.map(c=>[normalize(c.name),c.code.toUpperCase()]));
-const NAME_ALIASES: Record<string,string> = {
-  unitedstatesofamerica:'US', unitedstates:'US', russianfederation:'RU', southkorea:'KR', republicofkorea:'KR',
-  northkorea:'KP', democraticpeoplesrepublicofkorea:'KP', czechia:'CZ', czechrepublic:'CZ', swaziland:'SZ',
-  eswatini:'SZ', myanmar:'MM', burma:'MM', iran:'IR', bolivia:'BO', venezuela:'VE', moldova:'MD', tanzania:'TZ',
-  laos:'LA', vietnam:'VN', syria:'SY', palestine:'PS', taiwan:'TW', macau:'MO', macao:'MO', brunei:'BN',
-  capeverde:'CV', ivorycoast:'CI', costaica:'CR', democraticrepublicofthecongo:'CD', congo:'CG', turkey:'TR', türkiye:'TR'
-};
-function validIso2(value:unknown):string { const code=String(value??'').trim().toUpperCase(); return /^[A-Z]{2}$/.test(code)?code:''; }
-function countryCode(feature:any):string {
-  const p=feature?.properties??{};
-  for (const candidate of [p.ISO_A2,p.ISO_A2_EH,p.ISO_A2_CODE,p['ISO3166-1-Alpha-2'],p.iso_a2,p.ISO2]) { const code=validIso2(candidate); if(code)return code; }
-  for (const name of [p.ADMIN,p.NAME,p.name,p.NAME_EN,p.SOVEREIGNT]) { const key=normalize(String(name??'')); const code=NAME_ALIASES[key]||countryByName.get(key); if(code)return code; }
-  return '';
-}
-function classify(value?:string):Category {
-  if(!value)return'unknown'; const raw=String(value).trim(), v=normalize(raw);
-  if(/^\d+$/.test(raw)||v==='visafree')return'free';
-  if(v==='visaonarrival')return'voa';
-  if(v==='evisa'||v==='eta')return'evisa';
-  if(v==='visarequired'||v==='noadmission')return'required';
-  return'unknown';
-}
-interface Props { passport:string; onDestinationSelect?:(destination:string,category:Category)=>void; onAtlasData?:(destinations:Record<string,Category>)=>void; }
-interface Row { Passport:string; Destination:string; Requirement:string; }
+const DATA_URL='https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv';
+const WORLD_URL='https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson';
+const INDIA_OFFICIAL_URL='https://raw.githubusercontent.com/datameet/maps/master/Country/india-soi.geojson';
+const COLORS={free:'#63ad69',voa:'#a9d67f',evisa:'#f1c75b',required:'#df8585',unknown:'#d8dde2'} as const;
+type Category=keyof typeof COLORS;
+const LABELS:Record<Category,string>={free:'Visa free',voa:'Visa on arrival',evisa:'eVisa / online',required:'Visa required',unknown:'Not in dataset'};
+const normalize=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]/g,'');
+const countryByCode=new Map(COUNTRIES.map(c=>[c.code.toUpperCase(),c]));
+const countryByName=new Map(COUNTRIES.map(c=>[normalize(c.name),c.code.toUpperCase()]));
+const NAME_ALIASES:Record<string,string>={unitedstatesofamerica:'US',unitedstates:'US',russianfederation:'RU',southkorea:'KR',republicofkorea:'KR',northkorea:'KP',democraticpeoplesrepublicofkorea:'KP',czechia:'CZ',czechrepublic:'CZ',swaziland:'SZ',eswatini:'SZ',myanmar:'MM',burma:'MM',iran:'IR',bolivia:'BO',venezuela:'VE',moldova:'MD',tanzania:'TZ',laos:'LA',vietnam:'VN',syria:'SY',palestine:'PS',taiwan:'TW',macau:'MO',macao:'MO',brunei:'BN',capeverde:'CV',ivorycoast:'CI',costaica:'CR',democraticrepublicofthecongo:'CD',congo:'CG',turkey:'TR',türkiye:'TR'};
+function validIso2(value:unknown){const code=String(value??'').trim().toUpperCase();return/^[A-Z]{2}$/.test(code)?code:''}
+function countryCode(feature:any){const p=feature?.properties??{};for(const candidate of[p.ISO_A2,p.ISO_A2_EH,p.ISO_A2_CODE,p['ISO3166-1-Alpha-2'],p.iso_a2,p.ISO2]){const code=validIso2(candidate);if(code)return code}for(const name of[p.ADMIN,p.NAME,p.name,p.NAME_EN,p.SOVEREIGNT]){const key=normalize(String(name??''));const code=NAME_ALIASES[key]||countryByName.get(key);if(code)return code}return''}
+function classify(value?:string):Category{if(!value)return'unknown';const raw=String(value).trim(),v=normalize(raw);if(/^\d+$/.test(raw)||v==='visafree')return'free';if(v==='visaonarrival')return'voa';if(v==='evisa'||v==='eta')return'evisa';if(v==='visarequired'||v==='noadmission')return'required';return'unknown'}
+interface Props{passport:string;onDestinationSelect?:(destination:string,category:Category)=>void;onAtlasData?:(destinations:Record<string,Category>)=>void}
+interface Row{Passport:string;Destination:string;Requirement:string}
 
 const WorldVisaMap:React.FC<Props>=({passport,onDestinationSelect,onAtlasData})=>{
-  const svgRef=useRef<SVGSVGElement>(null);
-  const [rules,setRules]=useState<Row[]>([]);
-  const [countries,setCountries]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [error,setError]=useState(false);
-  const passportCode=COUNTRIES.find(c=>c.name===passport)?.code?.toUpperCase()??'IN';
-
-  useEffect(()=>{ let cancelled=false; setLoading(true);
-    Promise.all([d3.csv(DATA_URL),d3.json<any>(WORLD_URL),d3.json<any>(INDIA_OFFICIAL_URL)]).then(([csv,world,indiaOfficial])=>{
-      if(cancelled)return;
-      const worldFeatures=world?.features??[], indiaFeature=indiaOfficial?.features?.[0];
-      const mergedFeatures=indiaFeature?[...worldFeatures.filter((f:any)=>countryCode(f)!=='IN'),{...indiaFeature,properties:{...(indiaFeature.properties??{}),ISO_A2:'IN',ADMIN:'India',NAME:'India'}}]:worldFeatures;
-      setRules(csv as Row[]); setCountries(mergedFeatures); setLoading(false);
-    }).catch(()=>{if(!cancelled){setError(true);setLoading(false);}});
-    return()=>{cancelled=true;};
-  },[]);
-
-  const rulesByDestination=useMemo(()=>{
-    const map=new Map<string,string>();
-    rules.forEach(r=>{if(r.Passport?.trim().toUpperCase()===passportCode){const destination=validIso2(r.Destination);if(destination)map.set(destination,r.Requirement);}});
-    return map;
-  },[rules,passportCode]);
-
-  const categorizedDestinations=useMemo(()=>{
-    const result:Record<string,Category>={};
-    rulesByDestination.forEach((v,k)=>{result[k]=classify(v);});
-    return result;
-  },[rulesByDestination]);
-
-  useEffect(()=>{ onAtlasData?.(categorizedDestinations); },[categorizedDestinations,onAtlasData]);
-
-  const counts=useMemo(()=>{const c:Record<Category,number>={free:0,voa:0,evisa:0,required:0,unknown:0};rulesByDestination.forEach(v=>c[classify(v)]+=1);return c;},[rulesByDestination]);
-
-  useEffect(()=>{
-    if(!svgRef.current||!countries.length)return;
-    const svg=d3.select(svgRef.current); svg.selectAll('*').remove();
-    const width=960,height=500,collection={type:'FeatureCollection',features:countries} as any;
-    const projection=d3.geoNaturalEarth1().fitSize([width,height],collection),path=d3.geoPath(projection),layer=svg.append('g');
-    layer.selectAll('path').data(countries).join('path').attr('d',path as any)
-      .attr('fill',(d:any)=>COLORS[classify(rulesByDestination.get(countryCode(d)))])
-      .attr('fill-opacity',(d:any)=>classify(rulesByDestination.get(countryCode(d)))==='unknown'?.62:1)
-      .attr('stroke','#fff').attr('stroke-width',.7).style('cursor','pointer')
-      .on('mouseenter',function(){d3.select(this).attr('stroke','#17202a').attr('stroke-width',1.5);})
-      .on('mouseleave',function(){d3.select(this).attr('stroke','#fff').attr('stroke-width',.7);})
-      .on('click',(_e,d:any)=>{const code=countryCode(d),name=countryByCode.get(code)?.name||d.properties?.ADMIN||d.properties?.NAME||d.properties?.name||'Destination';onDestinationSelect?.(name,classify(rulesByDestination.get(code)));})
-      .append('title').text((d:any)=>{const code=countryCode(d),name=countryByCode.get(code)?.name||d.properties?.ADMIN||d.properties?.NAME||d.properties?.name||'Destination';return`${name} — ${LABELS[classify(rulesByDestination.get(code))]}`;});
-    layer.selectAll('path').filter((d:any)=>countryCode(d)===passportCode).attr('stroke','#17202a').attr('stroke-width',2.2);
-  },[countries,rulesByDestination,passportCode,onDestinationSelect]);
-
-  return <section><style>{`.vc-map{position:relative;background:#edf0f2;border:1px solid #e1e5e9;border-radius:22px;overflow:hidden}.vc-map svg{display:block;width:100%;height:auto}.vc-map-loading{min-height:360px;display:grid;place-items:center;color:#68737d;font-size:14px}.vc-map-legend{display:flex;flex-wrap:wrap;gap:8px;padding:13px 16px;background:#fff;border-top:1px solid #e1e5e9}.vc-chip{border:0;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:700}.vc-note{font-size:11px;color:#7a848d;margin:9px 4px 0}`}</style><div className="vc-map">
-    {loading?<div className="vc-map-loading">Loading the world visa atlas…</div>:error?<div className="vc-map-loading">Could not load the visa atlas. Reload to try again.</div>:<svg ref={svgRef} viewBox="0 0 960 500" role="img" aria-label={`Visa access map for ${passport} passport`}/>}
-    <div className="vc-map-legend">{(['free','voa','evisa','required'] as Category[]).map(k=><span className="vc-chip" key={k} style={{background:COLORS[k]+'35'}}>{LABELS[k]} · {counts[k]}</span>)}</div>
-  </div><p className="vc-note">India's boundary is overridden with the Survey-of-India-derived boundary dataset. Visa access remains a discovery layer based on the Passport Index matrix; individual visa rules must be verified against official government sources.</p></section>;
+ const svgRef=useRef<SVGSVGElement>(null);const[rules,setRules]=useState<Row[]>([]);const[countries,setCountries]=useState<any[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState(false);
+ const passportCode=COUNTRIES.find(c=>c.name===passport)?.code?.toUpperCase()??'IN';
+ useEffect(()=>{let cancelled=false;setLoading(true);Promise.all([d3.csv(DATA_URL),d3.json<any>(WORLD_URL),d3.json<any>(INDIA_OFFICIAL_URL)]).then(([csv,world,indiaOfficial])=>{if(cancelled)return;const worldFeatures=world?.features??[],indiaFeature=indiaOfficial?.features?.[0];const mergedFeatures=indiaFeature?[...worldFeatures.filter((f:any)=>countryCode(f)!=='IN'),{...indiaFeature,properties:{...(indiaFeature.properties??{}),ISO_A2:'IN',ADMIN:'India',NAME:'India'}}]:worldFeatures;setRules(csv as Row[]);setCountries(mergedFeatures);setLoading(false)}).catch(()=>{if(!cancelled){setError(true);setLoading(false)}});return()=>{cancelled=true}},[]);
+ const rulesByDestination=useMemo(()=>{const map=new Map<string,string>();rules.forEach(r=>{if(r.Passport?.trim().toUpperCase()===passportCode){const d=validIso2(r.Destination);if(d)map.set(d,r.Requirement)}});return map},[rules,passportCode]);
+ const categorized=useMemo(()=>{const result:Record<string,Category>={};rulesByDestination.forEach((v,k)=>{result[k]=classify(v)});return result},[rulesByDestination]);
+ useEffect(()=>{onAtlasData?.(categorized)},[categorized,onAtlasData]);
+ const counts=useMemo(()=>{const c:Record<Category,number>={free:0,voa:0,evisa:0,required:0,unknown:0};rulesByDestination.forEach(v=>c[classify(v)]++);return c},[rulesByDestination]);
+ useEffect(()=>{if(!svgRef.current||!countries.length)return;const svg=d3.select(svgRef.current);svg.selectAll('*').remove();const width=960,height=500,collection={type:'FeatureCollection',features:countries} as any,projection=d3.geoNaturalEarth1().fitSize([width,height],collection),path=d3.geoPath(projection),layer=svg.append('g');
+  layer.selectAll('path').data(countries).join('path').attr('d',path as any).attr('fill',(d:any)=>COLORS[classify(rulesByDestination.get(countryCode(d)))]).attr('fill-opacity',(d:any)=>classify(rulesByDestination.get(countryCode(d)))==='unknown'?.62:1).attr('stroke','#fff').attr('stroke-width',.7).style('cursor','pointer').on('mouseenter',function(){d3.select(this).attr('stroke','#17202a').attr('stroke-width',1.5)}).on('mouseleave',function(){d3.select(this).attr('stroke','#fff').attr('stroke-width',.7)}).on('click',(_e,d:any)=>{const code=countryCode(d),name=countryByCode.get(code)?.name||d.properties?.ADMIN||d.properties?.NAME||d.properties?.name||'Destination';onDestinationSelect?.(name,classify(rulesByDestination.get(code)))}).append('title').text((d:any)=>{const code=countryCode(d),name=countryByCode.get(code)?.name||d.properties?.ADMIN||d.properties?.NAME||d.properties?.name||'Destination';return`${name} — ${LABELS[classify(rulesByDestination.get(code))]}`});
+  layer.selectAll('path').filter((d:any)=>countryCode(d)===passportCode).attr('stroke','#17202a').attr('stroke-width',2.2);
+ },[countries,rulesByDestination,passportCode,onDestinationSelect]);
+ return <section><style>{`.vc-map{position:relative;background:#edf0f2;border:1px solid #e1e5e9;border-radius:22px;overflow:hidden}.vc-map svg{display:block;width:100%;height:auto}.vc-map-loading{min-height:360px;display:grid;place-items:center;color:#68737d;font-size:14px}.vc-map-legend{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px;background:#fff;border-top:1px solid #e1e5e9}.vc-legend{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#4d555c}.vc-swatch{width:12px;height:12px;border-radius:3px;display:inline-block}.vc-note{font-size:11px;color:#7a848d;margin:9px 4px 0}`}</style><div className="vc-map">{loading?<div className="vc-map-loading">Loading the world visa atlas…</div>:error?<div className="vc-map-loading">Could not load the visa atlas. Reload to try again.</div>:<svg ref={svgRef} viewBox="0 0 960 500" role="img" aria-label={`Visa access map for ${passport} passport`}/>}<div className="vc-map-legend">{(['free','voa','evisa','required'] as Category[]).map(k=><span className="vc-legend" key={k}><i className="vc-swatch" style={{backgroundColor:COLORS[k]}}/>{LABELS[k]}</span>)}</div></div></section>
 };
 export default WorldVisaMap;
