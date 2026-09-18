@@ -48,6 +48,8 @@ const mrzChecksum = (value: string): number => {
   return sum % 10;
 };
 
+export const computeCheckDigit = (value: string): string => String(mrzChecksum(value));
+
 const normalizeMrzLine = (line: string) =>
   line.toUpperCase().replace(/[^A-Z0-9<]/g, '');
 
@@ -112,6 +114,79 @@ export const parseMrz = (line1: string, line2: string): ParsedMrz | null => {
     personalNumberCheck,
     compositeCheck,
   };
+};
+
+// Country/nationality codes are always 3 letters, no digits.
+const toMrzAlpha = (s: string, length: number): string =>
+  s
+    .toUpperCase()
+    .replace(/[^A-Z<]/g, (c) => (c === ' ' ? '<' : ''))
+    .padEnd(length, '<')
+    .slice(0, length);
+
+// Passport/personal numbers can be alphanumeric.
+const toMrzAlnum = (s: string, length: number): string =>
+  s
+    .toUpperCase()
+    .replace(/[^A-Z0-9<]/g, (c) => (c === ' ' ? '<' : ''))
+    .padEnd(length, '<')
+    .slice(0, length);
+
+// Reverse of parseMrz: reassembles a corrected/user-asserted set of field
+// values into well-formed TD3 lines with freshly computed check digits.
+// Used when a user edits the decoded fields shown after a failed/uncertain
+// read — since they're asserting these are the true values, computing check
+// digits from them (rather than comparing against ones the OCR guessed) is
+// the correct thing to do, same concept as the existing raw two-line MRZ
+// manual-entry path, just via friendlier per-field inputs.
+export const encodeMrzLine1 = (fields: {
+  issuingCountry: string;
+  surname: string;
+  givenNames: string;
+}): string => {
+  const country = toMrzAlpha(fields.issuingCountry, 3);
+  const surname = fields.surname.toUpperCase().trim().replace(/\s+/g, '<');
+  const givenNames = fields.givenNames.toUpperCase().trim().replace(/\s+/g, '<');
+  const nameField = `${surname}<<${givenNames}`;
+  return `P<${country}${nameField}`.padEnd(44, '<').slice(0, 44);
+};
+
+export const encodeMrzLine2 = (fields: {
+  passportNumber: string;
+  nationality: string;
+  dob: string;
+  sex: string;
+  expiry: string;
+  personalNumber?: string;
+}): string => {
+  const passportNumber = toMrzAlnum(fields.passportNumber, 9);
+  const passportNumberCheck = computeCheckDigit(passportNumber);
+  const nationality = toMrzAlpha(fields.nationality, 3);
+  const dob = fields.dob.padStart(6, '0').slice(0, 6);
+  const dobCheck = computeCheckDigit(dob);
+  const sex = /^[MFX]$/i.test(fields.sex) ? fields.sex.toUpperCase() : '<';
+  const expiry = fields.expiry.padStart(6, '0').slice(0, 6);
+  const expiryCheck = computeCheckDigit(expiry);
+  const personalNumber = toMrzAlnum(fields.personalNumber ?? '', 14);
+  const personalNumberCheck = computeCheckDigit(personalNumber);
+
+  const compositeInput =
+    passportNumber + passportNumberCheck + dob + dobCheck + expiry + expiryCheck + personalNumber + personalNumberCheck;
+  const compositeCheck = computeCheckDigit(compositeInput);
+
+  return (
+    passportNumber +
+    passportNumberCheck +
+    nationality +
+    dob +
+    dobCheck +
+    sex +
+    expiry +
+    expiryCheck +
+    personalNumber +
+    personalNumberCheck +
+    compositeCheck
+  );
 };
 
 const yymmddToDate = (yymmdd: string): Date | null => {

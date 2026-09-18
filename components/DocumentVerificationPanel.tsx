@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { DocumentCategory, DocumentVerificationResult } from '../types';
 import { runOcr, runMrzLineOcr } from '../services/ocrService';
 import { verifyPassportText, verifyGenericDocument } from '../services/documentVerificationService';
+import { encodeMrzLine1, encodeMrzLine2 } from '../services/mrzService';
 
 interface DocumentVerificationPanelProps {
   requirementId: string;
@@ -60,6 +61,8 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
   const [ocrConfidence, setOcrConfidence] = useState<number | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DocumentVerificationResult | undefined>(existingResult);
+  const [showFieldCorrection, setShowFieldCorrection] = useState(false);
+  const [correctedFields, setCorrectedFields] = useState<Record<string, string>>({});
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,7 +168,43 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
     setMrzLine2('');
     setOcrConfidence(undefined);
     setError(null);
+    setShowFieldCorrection(false);
+    setCorrectedFields({});
   };
+
+  const openFieldCorrection = () => {
+    setCorrectedFields(result?.fields ?? {});
+    setShowFieldCorrection(true);
+  };
+
+  const submitFieldCorrection = async () => {
+    setStage('verifying');
+    const line1 = encodeMrzLine1({
+      issuingCountry: correctedFields.issuingCountry ?? '',
+      surname: correctedFields.surname ?? '',
+      givenNames: correctedFields.givenNames ?? '',
+    });
+    const line2 = encodeMrzLine2({
+      passportNumber: correctedFields.passportNumber ?? '',
+      nationality: correctedFields.nationality ?? '',
+      dob: correctedFields.dob ?? '',
+      sex: correctedFields.sex ?? '',
+      expiry: correctedFields.expiry ?? '',
+    });
+    const verified = await runVerification('passport', `${line1}\n${line2}`, requirementText, 'ocr_corrected');
+    setResult(verified);
+    onVerified(requirementId, verified);
+    setShowFieldCorrection(false);
+    setStage('result');
+  };
+
+  const fieldCorrectionValid =
+    /^\d{6}$/.test(correctedFields.dob ?? '') &&
+    /^\d{6}$/.test(correctedFields.expiry ?? '') &&
+    (correctedFields.passportNumber ?? '').trim().length > 0 &&
+    (correctedFields.passportNumber ?? '').length <= 9 &&
+    /^[A-Za-z]{3}$/.test(correctedFields.nationality ?? '') &&
+    /^[A-Za-z]{3}$/.test(correctedFields.issuingCountry ?? '');
 
   if (stage === 'idle') {
     return (
@@ -279,6 +318,77 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
             {result.concerns.map((c, i) => <li key={i}>{c}</li>)}
           </ul>
         )}
+
+        {result.method === 'mrz' && result.fields && result.status !== 'verified' && (
+          <div className="mt-3">
+            {!showFieldCorrection ? (
+              <button
+                type="button"
+                onClick={openFieldCorrection}
+                className="text-xs font-bold text-[#005fb0] hover:underline"
+              >
+                Values look wrong? Correct them
+              </button>
+            ) : (
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                <p className="text-xs text-slate-500 mb-3">
+                  Enter the values exactly as printed in your passport — we'll recompute the checksums from what you enter.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['surname', 'Surname'],
+                    ['givenNames', 'Given names'],
+                    ['passportNumber', 'Passport number'],
+                    ['issuingCountry', 'Issuing country (3 letters)'],
+                    ['nationality', 'Nationality (3 letters)'],
+                    ['dob', 'Date of birth (YYMMDD)'],
+                    ['expiry', 'Expiry (YYMMDD)'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                      {label}
+                      <input
+                        value={correctedFields[key] ?? ''}
+                        onChange={(e) => setCorrectedFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="mt-1 w-full text-xs p-2 rounded-lg border border-slate-200 font-mono normal-case font-normal"
+                      />
+                    </label>
+                  ))}
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    Sex
+                    <select
+                      value={correctedFields.sex ?? ''}
+                      onChange={(e) => setCorrectedFields((prev) => ({ ...prev, sex: e.target.value }))}
+                      className="mt-1 w-full text-xs p-2 rounded-lg border border-slate-200 font-normal normal-case"
+                    >
+                      <option value="">—</option>
+                      <option value="M">M</option>
+                      <option value="F">F</option>
+                      <option value="X">X</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="flex gap-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={submitFieldCorrection}
+                    disabled={!fieldCorrectionValid}
+                    className="px-4 py-2 rounded-xl bg-[#005fb0] text-white text-xs font-bold disabled:opacity-40"
+                  >
+                    Re-check with these values
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFieldCorrection(false)}
+                    className="px-4 py-2 rounded-xl text-slate-500 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <button type="button" onClick={reset} className="mt-3 text-xs font-bold text-[#005fb0] hover:underline">
           Verify a different document
         </button>

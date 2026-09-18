@@ -59,8 +59,10 @@ export const verifyPassportText = (
     passportNumber: parsed.passportNumber,
     surname: parsed.surname,
     givenNames: parsed.givenNames,
+    issuingCountry: parsed.issuingCountry,
     nationality: parsed.nationality,
     dob: parsed.dob,
+    sex: parsed.sex,
     expiry: parsed.expiry,
   };
 
