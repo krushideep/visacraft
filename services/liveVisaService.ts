@@ -13,6 +13,13 @@ export interface LiveVisaCheck {
     probabilities?: Record<string, number>;
     confidence?: number;
     needsReview?: boolean;
+    model?: string;
+  };
+  live?: {
+    status: "verified" | "needs_review";
+    reason?: string;
+    sourceCount?: number;
+    model?: string;
   };
 }
 
