@@ -1,4 +1,3 @@
-
 export interface VisaChecklist {
   countryFrom: string;
   countryTo: string;
@@ -13,6 +12,13 @@ export interface VisaChecklist {
   officialLinks: { title: string; url: string }[];
   applicationForms: { title: string; url: string }[];
   checklistItems: ChecklistItem[];
+  liveVerification?: {
+    checkedAt: string;
+    sourceEvidence: { title: string; url: string }[];
+    jevCategory?: string;
+    jevConfidence?: number;
+    jevNeedsReview?: boolean;
+  };
 }
 
 export interface ChecklistItem {
