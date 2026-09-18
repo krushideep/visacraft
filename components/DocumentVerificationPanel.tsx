@@ -69,11 +69,47 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
     setError(null);
     setStage('ocr_running');
     try {
-      const { text, confidence } = await runOcr(file);
-      setOcrConfidence(confidence);
-      const mrzMissing = category === 'passport' && !/[A-Z0-9<]{40,}/i.test(text.replace(/\s+/g, ''));
+      if (category === 'passport') {
+        // Run a general-print pass and an OCR-B pass (tuned for the MRZ's
+        // font) in parallel. Overall OCR confidence isn't a reliable signal
+        // for picking between them — the OCR-B model reads garbage on the
+        // non-MRZ regions (photo, printed name fields), which drags its
+        // average confidence down even when the MRZ line itself is read
+        // perfectly. Instead, rank by whether each pass actually produced a
+        // checksum-computable MRZ result — that's a much stronger,
+        // domain-specific correctness signal than raw OCR confidence.
+        const [ocrbPass, engPass] = await Promise.all([runOcr(file, 'ocrb'), runOcr(file, 'eng')]);
+        const rank = (r: DocumentVerificationResult) =>
+          r.status === 'verified' || r.status === 'expired' ? 2 : r.status === 'failed' ? 1 : 0;
 
-      if (confidence < OCR_CONFIDENCE_THRESHOLD || mrzMissing) {
+        const candidates = [
+          { verification: verifyPassportText(ocrbPass.text, 'ocr'), ocrConfidence: ocrbPass.confidence },
+          { verification: verifyPassportText(engPass.text, 'ocr'), ocrConfidence: engPass.confidence },
+        ];
+        const best = candidates.reduce((a, b) => (rank(b.verification) > rank(a.verification) ? b : a));
+
+        if (rank(best.verification) > 0) {
+          setOcrConfidence(best.ocrConfidence);
+          const verified = { ...best.verification, ocrConfidence: best.ocrConfidence };
+          setResult(verified);
+          onVerified(requirementId, verified);
+          setStage('result');
+          return;
+        }
+
+        // Neither pass found MRZ-shaped lines at all. Pre-fill correction with
+        // the eng pass's text — OCR-B output on non-MRZ regions is mostly
+        // unreadable noise and wouldn't help a human correct it.
+        setOcrConfidence(engPass.confidence);
+        setDraftText(engPass.text);
+        setStage('needs_correction');
+        return;
+      }
+
+      const { text, confidence } = await runOcr(file, 'eng');
+      setOcrConfidence(confidence);
+
+      if (confidence < OCR_CONFIDENCE_THRESHOLD) {
         setDraftText(text);
         setStage('needs_correction');
         return;

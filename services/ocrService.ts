@@ -15,13 +15,20 @@ export interface OcrResult {
 // actual deployed base regardless of how Vite's `base` config is set.
 const assetUrl = (relativePath: string) => new URL(relativePath, document.baseURI).toString();
 
+// 'eng' (tessdata_best, Apache-2.0) reads normal print; 'ocrb' is a dedicated
+// model trained on the OCR-B font used by the MRZ, which a general print
+// model isn't tuned to recognize accurately. See public/tesseract/README.md
+// for provenance and licensing (the ocrb model is GPLv3, kept as a separate
+// attributed data asset rather than linked into application code).
+export type OcrLang = 'eng' | 'ocrb';
+
 // Unlike webllmService's memoized engine singleton, OCR workers are cheap and
 // short-lived: we spin one up per verification and terminate it afterward
 // rather than keeping a worker resident for the life of the app.
-export const runOcr = async (image: File | Blob): Promise<OcrResult> => {
+export const runOcr = async (image: File | Blob, lang: OcrLang = 'eng'): Promise<OcrResult> => {
   const { createWorker } = await import('tesseract.js');
 
-  const worker = await createWorker('eng', 1, {
+  const worker = await createWorker(lang, 1, {
     workerPath: assetUrl('tesseract/worker.min.js'),
     corePath: assetUrl('tesseract/tesseract-core.wasm.js'),
     langPath: assetUrl('tesseract/lang-data'),
