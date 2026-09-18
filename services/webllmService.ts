@@ -92,3 +92,57 @@ export const verifyDocumentText = async (
 };
 
 export const preloadWebLLM = () => getEngine();
+
+// Extracts processing time / fee entirely on-device from official-source
+// evidence text already fetched by the Jev API. This exists because the
+// server-side Jev question schema only supports noul/choice/score/
+// bounding_box (no free-text extraction — confirmed via a live 422), and a
+// regex-based approach over the same evidence was unreliable on real pages
+// (matched a visa-exemption stay-duration clause instead of processing
+// time, and the wrong row of a multi-category fee table). Running the
+// extraction as a targeted, single-field-at-a-time LLM read locally keeps
+// the "never guess" rule intact: the model is told to reply NOT_STATED
+// rather than infer, and the caller only accepts a value from the strict
+// expected format.
+export const extractProcessingTimeAndFee = async (
+  evidenceText: string,
+  destination: string
+): Promise<{ processingTime?: string; fee?: string }> => {
+  const engine = await getEngine();
+
+  const system =
+    `You are a precise extraction tool running entirely in the traveler's browser.\n` +
+    `You will be given text scraped from an official government/embassy source about a visa to ${destination}.\n` +
+    `IMPORTANT: Only report a value if it is EXPLICITLY and UNAMBIGUOUSLY stated in the text as the visa processing time or the visa fee. ` +
+    `Never infer, estimate, or reuse a number that describes something else (e.g. permitted stay duration, validity period, unrelated fees). ` +
+    `If there are multiple visa categories with different fees/times and it isn't clear which one applies, reply NOT_STATED for that field. ` +
+    `When genuinely unstated or ambiguous, you MUST reply NOT_STATED — never guess.\n` +
+    `Reply in exactly this format, nothing else, no explanation:\n` +
+    `PROCESSING_TIME: <value or NOT_STATED>\n` +
+    `FEE: <value or NOT_STATED>`;
+
+  const user = `Source text:\n${evidenceText.slice(0, 6000)}`;
+
+  const response = await engine.chat.completions.create({
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    temperature: 0,
+    max_tokens: 100,
+  });
+
+  const text = response.choices[0]?.message?.content?.trim() ?? "";
+  const timeMatch = text.match(/PROCESSING_TIME:\s*(.+)/i);
+  const feeMatch = text.match(/FEE:\s*(.+)/i);
+  const clean = (raw?: string) => {
+    const value = raw?.split("\n")[0]?.trim();
+    if (!value || /^NOT_STATED$/i.test(value)) return undefined;
+    return value;
+  };
+
+  return {
+    processingTime: clean(timeMatch?.[1]),
+    fee: clean(feeMatch?.[1]),
+  };
+};

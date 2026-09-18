@@ -6,6 +6,7 @@ import VisaAssistant from './components/VisaAssistant';
 import WorldVisaMap from './components/WorldVisaMap';
 import { generateVisaChecklist } from './services/aiService';
 import { fetchLiveVisaCheck } from './services/liveVisaService';
+import { extractProcessingTimeAndFee, isWebLLMSupported } from './services/webllmService';
 import { COUNTRIES } from './constants';
 import { VisaChecklist, VisaType } from './types';
 
@@ -39,9 +40,14 @@ const App:React.FC=()=>{
      if(live){
        const liveLabel=liveCategoryToLabel[live.jev.category]??base.visaCategory;
        const liveSources=live.sourceEvidence.map(s=>({title:s.title,url:s.url}));
+       const hasEvidence=live.sourceEvidence.some(s=>s.excerpt);
+       const canExtract=hasEvidence&&isWebLLMSupported();
+       const isPlaceholder=(v:string)=>v==='See official source below';
        setChecklist({
          ...base,
          visaCategory: liveLabel,
+         estimatedProcessingTime: canExtract&&isPlaceholder(base.estimatedProcessingTime)?'Analyzing on-device…':base.estimatedProcessingTime,
+         expectedFee: canExtract&&isPlaceholder(base.expectedFee)?'Analyzing on-device…':base.expectedFee,
          officialLinks: liveSources.length ? liveSources : base.officialLinks,
          additionalTips:[
            ...base.additionalTips,
@@ -60,6 +66,34 @@ const App:React.FC=()=>{
            jevNeedsReview:live.jev.needsReview,
          },
        });
+       if(canExtract){
+         const evidenceText=live.sourceEvidence.map(s=>`${s.title}\n${s.excerpt??''}`).join('\n\n');
+         extractProcessingTimeAndFee(evidenceText,destination).then(extracted=>{
+           setChecklist(prev=>{
+             if(!prev||prev.countryTo!==base.countryTo||prev.countryFrom!==base.countryFrom||prev.visaType!==base.visaType)return prev;
+             if(!extracted.processingTime&&!extracted.fee)return{
+               ...prev,
+               estimatedProcessingTime: isPlaceholder(prev.estimatedProcessingTime)||prev.estimatedProcessingTime==='Analyzing on-device…'?base.estimatedProcessingTime:prev.estimatedProcessingTime,
+               expectedFee: isPlaceholder(prev.expectedFee)||prev.expectedFee==='Analyzing on-device…'?base.expectedFee:prev.expectedFee,
+             };
+             return{
+               ...prev,
+               estimatedProcessingTime: extracted.processingTime??base.estimatedProcessingTime,
+               expectedFee: extracted.fee??base.expectedFee,
+               additionalTips:[...prev.additionalTips,'Processing time and/or fee above were extracted on-device (WebLLM) from the official-source evidence — always verify against the official source before relying on it.'],
+             };
+           });
+         }).catch(()=>{
+           setChecklist(prev=>{
+             if(!prev||prev.countryTo!==base.countryTo||prev.countryFrom!==base.countryFrom||prev.visaType!==base.visaType)return prev;
+             return{
+               ...prev,
+               estimatedProcessingTime: prev.estimatedProcessingTime==='Analyzing on-device…'?base.estimatedProcessingTime:prev.estimatedProcessingTime,
+               expectedFee: prev.expectedFee==='Analyzing on-device…'?base.expectedFee:prev.expectedFee,
+             };
+           });
+         });
+       }
      } else {
        const reason='The live verification request did not reach the VisaCraft API. The checklist below is the deterministic rule/discovery result.';
        setChecklist({
