@@ -33,16 +33,15 @@ const fetchWithTimeout = async (url: string, init: RequestInit, timeoutMs: numbe
   }
 };
 
-// Extracts a plain string from an answer whose shape varies by question type
-// (seen so far: raw string, {value}, {text}, {choice}). Treats an empty or
-// whitespace-only result as "not stated" (undefined) rather than displaying
-// a blank value — the model is instructed to reply empty when the evidence
-// doesn't clearly state the field, never to guess.
-const extractText = (answer: any): string | undefined => {
-  const raw = answer?.text ?? answer?.value ?? answer?.choice ?? (typeof answer === "string" ? answer : undefined);
-  const trimmed = typeof raw === "string" ? raw.trim() : undefined;
-  return trimmed ? trimmed : undefined;
-};
+// Attempted to extract processing time / fee two ways: (1) a Jev question —
+// rejected with a 422, since Jev/typesafe.ai's schema only supports
+// noul/choice/score/bounding_box, no free-text extraction; (2) regex pattern
+// matching over the fetched evidence text — technically worked but was
+// unreliable on real pages (e.g. matched "60 days" from a visa-free STAY
+// duration clause, not processing time; matched the wrong row of a
+// multi-category fee table). Displaying either would risk showing wrong
+// numbers, which is worse than the honest "see official source" placeholder
+// this app already falls back to — so this isn't attempted at all for now.
 
 const extractJev = (payload: any) => {
   const root = payload?.answers ?? payload?.decisions ?? payload?.result ?? payload;
@@ -75,8 +74,6 @@ const extractJev = (payload: any) => {
       reviewProbability != null
         ? reviewProbability >= 0.5
         : Boolean(reviewAnswer),
-    processingTime: extractText(root?.processingTime),
-    fee: extractText(root?.fee),
     model: payload?.model,
   };
 };
@@ -119,16 +116,6 @@ const callJev = async (state: unknown) => {
               type: "noul",
               instructions:
                 "Should this case be reviewed rather than automatically treated as a confirmed visa rule?",
-            },
-            processingTime: {
-              type: "text",
-              instructions:
-                "Extract the typical visa processing time or turnaround stated in the official-source evidence, concisely (e.g. '3-5 business days'). Reply with an empty string if the evidence does not clearly state a processing time — never estimate or guess.",
-            },
-            fee: {
-              type: "text",
-              instructions:
-                "Extract the visa fee or cost stated in the official-source evidence, concisely, with currency (e.g. 'USD 40' or 'THB 2000'). Reply with an empty string if the evidence does not clearly state a fee — never estimate or guess.",
             },
           },
         }),
