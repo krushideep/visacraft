@@ -3,6 +3,7 @@ import type { DocumentCategory, DocumentVerificationResult } from '../types';
 import { runOcr, runMrzLineOcr } from '../services/ocrService';
 import { verifyPassportText, verifyGenericDocument } from '../services/documentVerificationService';
 import { encodeMrzLine1, encodeMrzLine2 } from '../services/mrzService';
+import { isPdf, pdfFirstPageToImageBlob } from '../services/pdfService';
 
 interface DocumentVerificationPanelProps {
   requirementId: string;
@@ -72,6 +73,11 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
     setError(null);
     setStage('ocr_running');
     try {
+      // OCR only understands images — a PDF is rendered to an image (its
+      // first page only) entirely client-side before anything else touches
+      // it, so the rest of this flow never needs to know the input was a PDF.
+      const imageFile = isPdf(file) ? await pdfFirstPageToImageBlob(file) : file;
+
       if (category === 'passport') {
         // Run a general-print pass and an OCR-B pass (tuned for the MRZ's
         // font) in parallel. Overall OCR confidence isn't a reliable signal
@@ -82,13 +88,13 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
         // checksum-computable MRZ result — that's a much stronger,
         // domain-specific correctness signal than raw OCR confidence.
         const [ocrbPass, engPass, lineOcrPass] = await Promise.all([
-          runOcr(file, 'ocrb'),
-          runOcr(file, 'eng'),
+          runOcr(imageFile, 'ocrb'),
+          runOcr(imageFile, 'eng'),
           // Heavier (loads OpenCV.js) but meaningfully more accurate: isolates
           // and OCRs each MRZ line individually rather than the whole image.
           // Caught separately so a failure here (e.g. OpenCV.js didn't load)
           // doesn't take down the two whole-image candidates above.
-          runMrzLineOcr(file).catch(() => null),
+          runMrzLineOcr(imageFile).catch(() => null),
         ]);
         const rank = (r: DocumentVerificationResult) =>
           r.status === 'verified' || r.status === 'expired' ? 2 : r.status === 'failed' ? 1 : 0;
@@ -123,7 +129,7 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
         return;
       }
 
-      const { text, confidence } = await runOcr(file, 'eng');
+      const { text, confidence } = await runOcr(imageFile, 'eng');
       setOcrConfidence(confidence);
 
       if (confidence < OCR_CONFIDENCE_THRESHOLD) {
@@ -138,7 +144,11 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
       onVerified(requirementId, verified);
       setStage('result');
     } catch {
-      setError('Reading this image failed. Try a clearer photo, or enter the details manually.');
+      setError(
+        isPdf(file)
+          ? 'Reading this PDF failed. Try a clearer scan, or enter the details manually.'
+          : 'Reading this image failed. Try a clearer photo, or enter the details manually.'
+      );
       setStage('idle');
     }
   };
@@ -210,7 +220,7 @@ const DocumentVerificationPanel: React.FC<DocumentVerificationPanelProps> = ({
     return (
       <div className="flex items-center gap-3 mt-1" onClick={(e) => e.stopPropagation()}>
         <label className="text-xs font-bold text-[#005fb0] cursor-pointer hover:underline">
-          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+          <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handleFileChange} />
           Upload &amp; verify
         </label>
         <button

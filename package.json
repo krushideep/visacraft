@@ -17,6 +17,7 @@
     "@mui/material": "^7.3.7",
     "d3": "^7.9.0",
     "image-js": "^0.21.9",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tesseract.js": "^5.1.1"
