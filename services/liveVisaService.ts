@@ -1,5 +1,10 @@
 import { VisaType } from "../types";
 
+const API_URL = (
+  import.meta.env.VITE_VISA_API_URL ||
+  "https://visacraft-jev-api-krushideep.vercel.app"
+).replace(/\/$/, "");
+
 export interface LiveVisaCheck {
   sourceCheckedAt: string;
   sourceEvidence: { title: string; url: string; excerpt?: string }[];
@@ -18,7 +23,7 @@ export const fetchLiveVisaCheck = async (
   accessCategory: string
 ): Promise<LiveVisaCheck | null> => {
   try {
-    const response = await fetch("/api/visa-check", {
+    const response = await fetch(`${API_URL}/api/visa-check`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passport, destination, purpose, accessCategory }),
