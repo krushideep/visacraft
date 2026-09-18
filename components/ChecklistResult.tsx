@@ -317,11 +317,17 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest text-slate-400">Live verification</p>
                   <h3 className="text-xl font-black text-slate-900 mt-1">
-                    {checklist.liveVerification.jevNeedsReview ? 'Needs verification' : 'Official-source check completed'}
+                    {checklist.liveVerification.status === 'unavailable'
+                      ? 'Live check unavailable'
+                      : checklist.liveVerification.jevNeedsReview
+                        ? 'Needs verification'
+                        : 'Official-source check completed'}
                   </h3>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                  Jev: {checklist.liveVerification.jevCategory ?? 'classified'}
+                  {checklist.liveVerification.status === 'unavailable'
+                    ? 'Fallback result'
+                    : `Jev: ${checklist.liveVerification.jevCategory ?? 'classified'}`}
                 </span>
               </div>
               <p className="text-sm text-slate-500 mt-3">
@@ -331,7 +337,9 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
                   : ''}
               </p>
               <p className="text-sm text-slate-500 mt-2">
-                {checklist.liveVerification.sourceEvidence.length} official source{checklist.liveVerification.sourceEvidence.length === 1 ? '' : 's'} retrieved for this check.
+                {checklist.liveVerification.status === 'unavailable'
+                  ? checklist.liveVerification.reason
+                  : `${checklist.liveVerification.sourceEvidence.length} official source${checklist.liveVerification.sourceEvidence.length === 1 ? '' : 's'} retrieved for this check.`}
               </p>
             </div>
           )}
