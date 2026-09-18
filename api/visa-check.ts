@@ -145,6 +145,8 @@ const callJev = async (state: unknown) => {
     }
 
     if (!response.ok) {
+      // eslint-disable-next-line no-console
+      console.error("jev_http_error", response.status, text.slice(0, 2000));
       return {
         raw: null,
         error: `jev_http_${response.status}`,
