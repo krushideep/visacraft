@@ -311,6 +311,39 @@ const ChecklistResult: React.FC<ChecklistResultProps> = ({ checklist, onReset })
             })}
           </div>
 
+          {checklist.liveVerification && (
+            <div className="mt-10 p-6 rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">Live verification</p>
+                  <h3 className="text-xl font-black text-slate-900 mt-1">
+                    {checklist.liveVerification.status === 'unavailable'
+                      ? 'Live check unavailable'
+                      : checklist.liveVerification.jevNeedsReview
+                        ? 'Needs verification'
+                        : 'Official-source check completed'}
+                  </h3>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                  {checklist.liveVerification.status === 'unavailable'
+                    ? 'Fallback result'
+                    : `Jev: ${checklist.liveVerification.jevCategory ?? 'classified'}`}
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 mt-3">
+                Checked {new Date(checklist.liveVerification.checkedAt).toLocaleString()}
+                {checklist.liveVerification.jevConfidence != null
+                  ? ` · Confidence ${Math.round(checklist.liveVerification.jevConfidence * 100)}%`
+                  : ''}
+              </p>
+              <p className="text-sm text-slate-500 mt-2">
+                {checklist.liveVerification.status === 'unavailable'
+                  ? checklist.liveVerification.reason
+                  : `${checklist.liveVerification.sourceEvidence.length} official source${checklist.liveVerification.sourceEvidence.length === 1 ? '' : 's'} retrieved for this check.`}
+              </p>
+            </div>
+          )}
+
           {(checklist.officialLinks?.length > 0 || checklist.applicationForms?.length > 0) && (
             <div className="mt-16 pt-12 border-t border-slate-100 no-print">
               <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Official Resources</h3>

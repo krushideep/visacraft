@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/visa-check.ts": {
+      "maxDuration": 30
+    }
+  }
+}

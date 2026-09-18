@@ -1,0 +1,44 @@
+name: Sync Visa Atlas
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download latest Passport Index dataset
+        run: |
+          mkdir -p public/atlas
+          curl -fsSL             https://raw.githubusercontent.com/imorte/passport-index-data/main/passport-index-tidy-iso2.csv             -o public/atlas/passport-index-tidy-iso2.csv
+
+      - name: Validate dataset
+        run: |
+          python - <<'PY'
+          import csv
+          path = "public/atlas/passport-index-tidy-iso2.csv"
+          with open(path, newline="", encoding="utf-8") as f:
+              reader = csv.DictReader(f)
+              required = {"Passport", "Destination", "Requirement"}
+              if not required.issubset(reader.fieldnames or set()):
+                  raise SystemExit(f"Unexpected schema: {reader.fieldnames}")
+              rows = sum(1 for _ in reader)
+          if rows < 1000:
+              raise SystemExit(f"Dataset unexpectedly small: {rows} rows")
+          print(f"Validated {rows} atlas rows")
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/atlas/passport-index-tidy-iso2.csv
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: sync passport atlas dataset"
+          git push
