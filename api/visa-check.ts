@@ -141,17 +141,9 @@ const callJev = async (state: unknown) => {
 };
 
 export default async function handler(req: any, res: any) {
-  const origin = String(req.headers?.origin ?? "");
-  const allowedOrigin =
-    origin === "https://krushideep.github.io" ||
-    origin === "https://krushideep.in" ||
-    origin.endsWith(".vercel.app") ||
-    origin.startsWith("http://localhost:")
-      ? origin
-      : "https://krushideep.github.io";
-
-  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
-  res.setHeader("Vary", "Origin");
+  // This endpoint is intentionally public and uses no cookies/auth from the browser.
+  // Allow the static VisaCraft frontend from GitHub Pages, custom domains and previews.
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
