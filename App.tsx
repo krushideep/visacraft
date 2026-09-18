@@ -45,9 +45,10 @@ const App:React.FC=()=>{
          officialLinks: liveSources.length ? liveSources : base.officialLinks,
          additionalTips:[
            ...base.additionalTips,
-           live.jev.needsReview
-             ? 'Live source check completed, but the evidence was ambiguous. Verify the official source before relying on the classification.'
-             : `Live official-source check completed on ${new Date(live.sourceCheckedAt).toLocaleString()}.`,
+           live.live?.status === 'verified'
+             ? `LIVE VERIFIED: official-source evidence was checked and Jev classified this case on ${new Date(live.sourceCheckedAt).toLocaleString()}.`
+             : `LIVE CHECK: ${live.live?.reason ?? 'The evidence was insufficient for automatic verification.'} The displayed classification should be verified against the official source.`,
+           live.live?.sourceCount != null ? `Official sources retrieved: ${live.live.sourceCount}.` : 'Official-source retrieval completed.',
            live.jev.confidence != null ? `Jev classification confidence: ${Math.round(live.jev.confidence*100)}%.` : 'Jev classification completed.',
          ],
          liveVerification:{
